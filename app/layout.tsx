@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import "leaflet/dist/leaflet.css";
 import "./globals.css";
+import { assetPath } from "@/lib/assets";
 
 export const metadata: Metadata = {
   title: "Pakka — Ward 14",
   description: "Report it. Track it. Confirm the fix.",
-  manifest: "/manifest.webmanifest",
+  manifest: assetPath("/manifest.webmanifest"),
 };
 
 export const viewport: Viewport = {

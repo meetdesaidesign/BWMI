@@ -1,4 +1,5 @@
 import type { Issue } from "./types";
+import { assetPath } from "./assets";
 
 const roadTimeline = [
   { status: "reported" as const, labelEn: "Reported", labelHi: "रिपोर्ट किया", date: "18 Aug · 08:42", noteEn: "Photo and location verified", noteHi: "फोटो और जगह सत्यापित" },
@@ -6,7 +7,7 @@ const roadTimeline = [
   { status: "in_progress" as const, labelEn: "In progress", labelHi: "काम जारी", date: "20 Aug · 09:30", noteEn: "Repair crew assigned", noteHi: "मरम्मत दल नियुक्त" },
 ];
 
-export const seedIssues: Issue[] = [
+const rawSeedIssues: Issue[] = [
   {
     id: "PK-14028", category: "Roads", titleEn: "Deep pothole at Ambedkar Nagar turn", titleHi: "अंबेडकर नगर मोड़ पर गहरा गड्ढा", descriptionEn: "Large road cavity near the bus turn; risky for two-wheelers after rain.", descriptionHi: "बस मोड़ के पास बड़ा गड्ढा; बारिश के बाद दोपहिया वाहनों के लिए खतरनाक।", address: "Ambedkar Nagar Road", lat: 28.7041, lng: 77.1025, image: "/images/pothole.svg", supporters: 31, aliases: ["Riya M.", "A neighbour", "Kabir S."], status: "in_progress", severity: "high", reportedAgoEn: "10 days ago", reportedAgoHi: "10 दिन पहले", departmentEn: "Roads · Public Works Department", departmentHi: "सड़क · लोक निर्माण विभाग", roleEn: "Junior Engineer, Ward 14", roleHi: "कनिष्ठ अभियंता, वार्ड 14", escalationEn: "Assistant Engineer · grievance@ward14.demo", escalationHi: "सहायक अभियंता · grievance@ward14.demo", expectedEn: "3 Sep · 4 days remaining", expectedHi: "3 सितम्बर · 4 दिन बाकी", overdueDays: 0, mine: true, timeline: roadTimeline,
   },
@@ -26,3 +27,8 @@ export const seedIssues: Issue[] = [
     id: "PK-14025", category: "Waste", titleEn: "Overflowing bin near metro gate", titleHi: "मेट्रो गेट के पास भरा कूड़ादान", descriptionEn: "The public bin is overflowing onto the pavement.", descriptionHi: "सार्वजनिक कूड़ादान भरकर फुटपाथ पर फैल रहा है।", address: "Model Town Metro Gate 2", lat: 28.7081, lng: 77.1012, image: "/images/waste.svg", supporters: 18, aliases: ["Zoya", "A neighbour"], status: "awaiting_confirmation", severity: "medium", reportedAgoEn: "8 days ago", reportedAgoHi: "8 दिन पहले", departmentEn: "Sanitation · Municipal Council", departmentHi: "स्वच्छता · नगर परिषद", roleEn: "Sanitary Inspector, Ward 14", roleHi: "स्वच्छता निरीक्षक, वार्ड 14", escalationEn: "Zonal Sanitation Officer · 1800-14-0014", escalationHi: "क्षेत्रीय स्वच्छता अधिकारी · 1800-14-0014", expectedEn: "Marked complete today", expectedHi: "आज पूरा बताया गया", mine: true, timeline: [...roadTimeline, { status: "awaiting_confirmation", labelEn: "Awaiting your check", labelHi: "आपकी जाँच बाकी", date: "Today · 11:20", noteEn: "Department uploaded completion proof", noteHi: "विभाग ने पूर्णता का सबूत जोड़ा" }],
   },
 ];
+
+export const seedIssues: Issue[] = rawSeedIssues.map((issue) => ({
+  ...issue,
+  image: assetPath(issue.image),
+}));

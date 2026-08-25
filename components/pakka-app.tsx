@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, NavBar, TabBar, Toast } from "antd-mobile";
 import { getCopy } from "@/lib/i18n";
 import { seedIssues } from "@/lib/seed";
+import { assetPath } from "@/lib/assets";
 import type { AIExtraction, Category, Issue, Locale } from "@/lib/types";
 import { MapLoader } from "./map-loader";
 import { StoryCard } from "./story-card";
@@ -22,6 +23,18 @@ const statusClass: Record<Issue["status"], string> = {
 };
 
 const categoryEmoji: Record<Category, string> = { Roads: "⌁", Waste: "↻", Water: "≈", Lighting: "✦", Drainage: "≋" };
+
+const staticDemoExtraction: AIExtraction = {
+  category: "Roads",
+  title_en: "Deep water-filled pothole",
+  title_hi: "पानी से भरा गहरा गड्ढा",
+  description_en: "A large water-filled pothole and cracked road surface create a serious hazard for two-wheelers.",
+  description_hi: "पानी से भरा बड़ा गड्ढा और टूटी सड़क दोपहिया वाहनों के लिए गंभीर खतरा है।",
+  severity: "high",
+  confidence: 0.94,
+  needs_user_review: false,
+  duplicate_id: "PK-14028",
+};
 
 function local(issue: Issue, locale: Locale, field: "title" | "description" | "reportedAgo" | "department" | "role" | "escalation" | "expected") {
   const suffix = locale === "hi" ? "Hi" : "En";
@@ -108,7 +121,7 @@ export function PakkaApp() {
   };
 
   const loadDemoPhoto = async () => {
-    const response = await fetch("/images/demo-pothole.jpg");
+    const response = await fetch(assetPath("/images/demo-pothole.jpg"));
     const blob = await response.blob();
     readFile(new File([blob], "demo-pothole.jpg", { type: "image/jpeg" }));
   };
@@ -122,6 +135,11 @@ export function PakkaApp() {
   const analyze = async () => {
     if (!photoBase64) return;
     navigate("analyzing");
+    if (process.env.NEXT_PUBLIC_STATIC_DEMO === "true") {
+      setExtraction(staticDemoExtraction);
+      window.setTimeout(() => navigate("review"), 900);
+      return;
+    }
     try {
       const response = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: photoBase64 }) });
       if (!response.ok) throw new Error("analysis failed");
@@ -145,7 +163,7 @@ export function PakkaApp() {
     const newIssue: Issue = {
       id: `PK-14${40 + issues.length}`, category: extraction.category, titleEn: extraction.title_en, titleHi: extraction.title_hi,
       descriptionEn: extraction.description_en, descriptionHi: extraction.description_hi, address: "Near your current location · Model Town", lat: 28.7035, lng: 77.1018,
-      image: photo ?? "/images/pothole.svg", supporters: 1, aliases: ["You"], status: "reported", severity: extraction.severity,
+      image: photo ?? assetPath("/images/pothole.svg"), supporters: 1, aliases: ["You"], status: "reported", severity: extraction.severity,
       reportedAgoEn: "Just now", reportedAgoHi: "अभी", departmentEn: "Auto-routing in progress", departmentHi: "सही विभाग चुना जा रहा है", roleEn: "Ward control room", roleHi: "वार्ड नियंत्रण कक्ष",
       escalationEn: "Ward Grievance Officer · 1800-14-0014", escalationHi: "वार्ड शिकायत अधिकारी · 1800-14-0014", expectedEn: "Acknowledgement within 24 hours", expectedHi: "24 घंटे में स्वीकार", mine: true,
       timeline: [{ status: "reported", labelEn: "Reported", labelHi: "रिपोर्ट किया", date: "Just now", noteEn: "Photo and approximate location attached", noteHi: "फोटो और अनुमानित जगह जोड़ी गई" }],
