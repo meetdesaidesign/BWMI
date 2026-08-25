@@ -29,7 +29,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - run: npm ci --legacy-peer-deps
       - name: Exclude server-only API route from static export
         run: mv app/api/analyze/route.ts /tmp/pakka-api-route.ts
       - run: npm run build
