@@ -59,14 +59,14 @@ export function LocationSheet({
       </dl>
 
       {tel || authority.sourceUrl ? (
-        <div className="sheet-actions">
+        <div className="location-actions">
           {tel ? (
-            <a className="sheet-action" href={tel}>
+            <a className="location-action" href={tel}>
               <Phone size={16} aria-hidden />{authority.officialContact}
             </a>
           ) : null}
           {authority.sourceUrl ? (
-            <a className="sheet-action" href={authority.sourceUrl} target="_blank" rel="noreferrer">
+            <a className="location-action" href={authority.sourceUrl} target="_blank" rel="noreferrer">
               <ExternalLink size={16} aria-hidden />{authority.sourceName}
             </a>
           ) : null}

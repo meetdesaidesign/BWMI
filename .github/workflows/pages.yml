@@ -23,6 +23,7 @@ jobs:
       GITHUB_PAGES: "true"
       NEXT_PUBLIC_BASE_PATH: /BWMI
       NEXT_PUBLIC_STATIC_DEMO: "true"
+      NEXT_PUBLIC_DEMO_SAMPLE: "true"
       NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
     steps:
       - uses: actions/checkout@v4

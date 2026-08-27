@@ -178,6 +178,8 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
   );
   const listIssues = useMemo(() => applyFilters(issues, filters, filterContext), [issues, filters, filterContext]);
   const highlighted = issues.find((issue) => issue.id === highlightedId) ?? null;
+  // Authority stays secondary to the location, and drops out entirely when unknown.
+  const authorityLine = areaContext.corporation[locale] || areaContext.authority.organizationName[locale] || "";
   const localeTag = locale === "en" ? "en-IN" : locale === "hi" ? "hi-IN" : "kn-IN";
 
   const applyFiltersAndStore = (next: FilterState) => {
@@ -257,11 +259,11 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
             className="area-selector"
             onClick={() => setLocationOpen(true)}
             aria-haspopup="dialog"
-            aria-label={`${areaContext.areaName[locale]}, ${areaContext.corporation[locale]}. ${t.areaDetails}`}
+            aria-label={`${areaContext.areaName[locale]}${authorityLine ? `, ${authorityLine}` : ""}. ${t.areaDetails}`}
           >
             <span className="area-selector-text">
               <span>{areaContext.areaName[locale]}</span>
-              <small>{areaContext.corporation[locale]}</small>
+              {authorityLine ? <small>{authorityLine}</small> : null}
             </span>
             <ChevronDown size={16} aria-hidden />
           </button>

@@ -7,7 +7,6 @@ import { useRef, useState } from "react";
 import { Button } from "antd-mobile";
 import { TopBar } from "./top-bar";
 import { OverlaySheet } from "./overlay-sheet";
-import { DEMO_SAMPLE_ENABLED } from "@/lib/config";
 import type { getCopy } from "@/lib/i18n";
 import type { AnalysisStatus, LocationFix, PhotoIssue } from "@/lib/types";
 
@@ -111,7 +110,7 @@ export function CaptureScreen({
       )}
 
       {photoIssue !== "none" && (
-        <p className="photo-note">
+        <p className={`photo-note${photoIssue === "uploadFailed" ? " is-error" : ""}`}>
           <CircleAlert size={15} aria-hidden />
           <span>{photoIssue === "uploadFailed" ? t.uploadFailed : t.photoUnclear}</span>
           {photoIssue === "uploadFailed" && <button type="button" className="text-button" onClick={onRetryAnalysis}>{t.retry}</button>}
@@ -120,7 +119,8 @@ export function CaptureScreen({
 
       <div className="capture-secondary">
         <button type="button" className="gallery-link" onClick={openGallery}>{t.upload}</button>
-        {DEMO_SAMPLE_ENABLED && <button type="button" className="sample-link" onClick={onSamplePhoto}>{t.demoPhotoHint}</button>}
+        {/* Demo builds only — the inline env check lets the compiler strip this from production. */}
+        {process.env.NEXT_PUBLIC_DEMO_SAMPLE === "true" && <button type="button" className="sample-link" onClick={onSamplePhoto}>{t.demoPhotoHint}</button>}
       </div>
 
       <div className={`location-row tone-${row.tone}`}>

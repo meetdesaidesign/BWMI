@@ -7,7 +7,7 @@ import {
   ImagePlus, MapPin, ShieldCheck,
   Sparkles, Users, X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Toast } from "antd-mobile";
 import { formatCopy, getCopy, getStatusLabel, localizedField } from "@/lib/i18n";
 import { LOCALE_META, resolveInitialLocale, writeStoredLocale } from "@/lib/locale";
@@ -15,7 +15,7 @@ import { seedIssues, WARD_CENTER } from "@/lib/seed";
 import { areaContext } from "@/lib/authority";
 import { locateInWard } from "@/lib/geo";
 import { assetPath } from "@/lib/assets";
-import { LOCATION_ACCURACY_LIMIT_M } from "@/lib/config";
+import { LOCATION_ACCURACY_LIMIT_M, PHOTO_MIN_EDGE_PX } from "@/lib/config";
 import { clearDraft, readDraft, writeDraft } from "@/lib/draft";
 import type { AIExtraction, AnalysisStatus, Category, Issue, Locale, LocationFix, PhotoIssue } from "@/lib/types";
 import { StoryCard } from "./story-card";
@@ -177,6 +177,8 @@ export function FixoApp() {
 
   useEffect(() => {
     const onPop = () => {
+      /* A sheet closing above the report pops its own entry — stay in the flow. */
+      if (isReportHistory(history.state)) return;
       setScreen((current) => (reportFlow.includes(current) ? lastHome.current : current));
     };
     window.addEventListener("popstate", onPop);
@@ -194,7 +196,6 @@ export function FixoApp() {
     if (screen !== "analyzing") return;
     if (analysis === "done" && extraction) { navigate("review"); return; }
     if (analysis === "failed") setScreen("capture");
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- navigate is re-created each render
   }, [screen, analysis, extraction]);
 
   const isHome = screen === "nearby" || screen === "mine";
@@ -277,7 +278,7 @@ export function FixoApp() {
       const probe = new Image();
       probe.onload = () => {
         setPhoto(url); setPhotoBase64(url);
-        setPhotoIssue(Math.min(probe.naturalWidth, probe.naturalHeight) < 480 ? "unclear" : "none");
+        setPhotoIssue(Math.min(probe.naturalWidth, probe.naturalHeight) < PHOTO_MIN_EDGE_PX ? "unclear" : "none");
         void runAnalysis(url);
       };
       probe.onerror = () => Toast.show({ content: t.photoUnclear, position: "bottom" });
