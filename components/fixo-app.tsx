@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- user-captured data URLs and local evidence require native img previews */
 
 import {
-  ArrowRight, Check, CircleAlert, Globe2,
+  ArrowRight, Building2, Check, CircleAlert, Globe2,
   ImagePlus, MapPin, ShieldCheck,
   Sparkles, Users, X,
 } from "lucide-react";
@@ -12,6 +12,7 @@ import { Button, Toast } from "antd-mobile";
 import { formatCopy, getCopy, getStatusLabel, localizedField } from "@/lib/i18n";
 import { LOCALE_META, resolveInitialLocale, writeStoredLocale } from "@/lib/locale";
 import { seedIssues, WARD_CENTER } from "@/lib/seed";
+import { areaContext } from "@/lib/authority";
 import { locateInWard } from "@/lib/geo";
 import { assetPath } from "@/lib/assets";
 import { LOCATION_ACCURACY_LIMIT_M } from "@/lib/config";
@@ -506,7 +507,7 @@ export function FixoApp() {
           )}
           {screen === "analyzing" && <AnalyzingScreen t={t} photo={photo} />}
           {screen === "review" && extraction && <ReviewScreen locale={locale} t={t} extraction={extraction} setExtraction={setExtraction} photo={photo} locationState={location.status} contact={contact} setContact={setContact} duplicate={issues.find((i) => i.id === extraction.duplicate_id)} different={different} setDifferent={setDifferent} onBack={() => navigate("capture")} onBackExisting={(i) => { backIssue(i.id); setSelectedId(i.id); navigate("issue"); }} onSubmit={submitReport} />}
-          {screen === "success" && <ResultScreen icon="sent" eyebrow={t.submittedEyebrow} title={t.submitted} body={t.submittedHelp} primary={t.viewReport} onPrimary={() => navigate("issue")} />}
+          {screen === "success" && <ResultScreen icon="sent" eyebrow={t.submittedEyebrow} title={t.submitted} body={t.submittedHelp} meta={<p className="result-authority"><Building2 size={16} aria-hidden />{areaContext.authority.organizationName[locale]} · {t.routingInProgress}</p>} primary={t.viewReport} onPrimary={() => navigate("issue")} />}
           {screen === "contest" && <ContestScreen t={t} photo={contestPhoto} fileRef={contestRef} onFile={(f) => readFile(f, true)} onBack={() => navigate("issue")} onSubmit={contestFix} />}
           {screen === "confirmed" && <ResultScreen icon="confirmed" eyebrow={t.confirmedEyebrow} title={t.confirmedTitle} body={t.confirmedHelp} primary={t.makeCard} onPrimary={() => navigate("story")} secondary={t.viewReport} onSecondary={() => navigate("issue")} />}
           {screen === "story" && <div className="full-page"><TopBar title={t.shareCardTitle} onBack={() => navigate("confirmed")} /><div className="story-page"><h1 className="type-heading-lg">{t.shareCardTitle}</h1><p className="type-body-md">{t.shareCardHelp}</p><StoryCard locale={locale} t={t} /></div></div>}
@@ -611,6 +612,6 @@ function ContestScreen({ t, photo, fileRef, onFile, onBack, onSubmit }: { t: Ret
   return <div className="full-page contest-page"><TopBar title={t.reopen} onBack={onBack} /><div className="capture-copy"><p className="eyebrow">{t.contestStep}</p><h1 className="type-heading-lg">{t.contestTitle}</h1><p className="type-body-md">{t.contestHelp}</p></div><input ref={fileRef} hidden type="file" accept="image/*" capture="environment" onChange={(e) => onFile(e.target.files?.[0])} /><button className={`contest-upload ${photo ? "has-photo" : ""}`} onClick={() => fileRef.current?.click()}>{photo ? <img src={photo} alt={t.photoAlt} /> : <><ImagePlus size={30} /><strong className="type-label-md">{t.camera}</strong><span className="type-caption">{t.upload}</span></>}</button><div className="contest-note"><ShieldCheck size={18} /><p className="type-caption">{t.contestNote}</p></div><div className="sticky-action"><Button block color="danger" size="large" className="primary-button danger-fill" disabled={!photo} onClick={onSubmit}>{t.reopen}<ArrowRight size={18} /></Button></div></div>;
 }
 
-function ResultScreen({ icon, eyebrow, title, body, primary, onPrimary, secondary, onSecondary }: { icon: "sent" | "confirmed"; eyebrow: string; title: string; body: string; primary: string; onPrimary: () => void; secondary?: string; onSecondary?: () => void }) {
-  return <div className={`result-screen ${icon}`}><div className="result-mark">{icon === "confirmed" ? <ShieldCheck size={52} /> : <><span className="pulse-ring" /><Check size={45} /></>}</div><p className="eyebrow">{eyebrow}</p><h1 className="type-display-lg">{title}</h1><p className="type-body-md">{body}</p><div className="result-proof"><span /><span /><span /><span className="active" /></div><Button block color="primary" size="large" className="primary-button" onClick={onPrimary}>{primary}<ArrowRight size={18} /></Button>{secondary && <Button block fill="outline" size="large" className="secondary-button" onClick={onSecondary}>{secondary}</Button>}</div>;
+function ResultScreen({ icon, eyebrow, title, body, meta, primary, onPrimary, secondary, onSecondary }: { icon: "sent" | "confirmed"; eyebrow: string; title: string; body: string; meta?: React.ReactNode; primary: string; onPrimary: () => void; secondary?: string; onSecondary?: () => void }) {
+  return <div className={`result-screen ${icon}`}><div className="result-mark">{icon === "confirmed" ? <ShieldCheck size={52} /> : <><span className="pulse-ring" /><Check size={45} /></>}</div><p className="eyebrow">{eyebrow}</p><h1 className="type-display-lg">{title}</h1><p className="type-body-md">{body}</p>{meta}<div className="result-proof"><span /><span /><span /><span className="active" /></div><Button block color="primary" size="large" className="primary-button" onClick={onPrimary}>{primary}<ArrowRight size={18} /></Button>{secondary && <Button block fill="outline" size="large" className="secondary-button" onClick={onSecondary}>{secondary}</Button>}</div>;
 }
