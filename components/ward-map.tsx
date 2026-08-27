@@ -7,7 +7,7 @@ import { CartoBasemap } from "./carto-basemap";
 import { tokens } from "@/design-system/generated/tokens";
 import { WARD_CENTER, type MapViewport } from "@/lib/geo";
 import type { Issue, Locale } from "@/lib/types";
-import { categoryMarkerSvg } from "./category-icon";
+import { categoryColor, categoryMarkerSvg } from "./category-icon";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const px = (value: string) => Number.parseInt(value, 10);
@@ -21,19 +21,27 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#39;");
 }
 
+/**
+ * Every pin is the evidence photo — a rounded square that cannot be mistaken
+ * for a basemap POI. Unselected stays small; selected enlarges in place.
+ * Category hue is only a fallback when the photo is missing.
+ */
 function markerIcon(issue: Issue, selected: boolean, label: string) {
   const media = selected ? px(tokens.markerSizeSelected) : px(tokens.markerSize);
   const stroke = selected ? px(tokens.markerBorderSelected) : px(tokens.markerBorder);
   const visual = media + stroke * 2;
   const hit = Math.max(visual, px(tokens.touchMin));
-  const inner = issue.image
+  const tint = categoryColor(issue.category);
+  const hasPhoto = Boolean(issue.image);
+  const inner = hasPhoto
     ? `<img src="${escapeHtml(issue.image)}" alt="">`
-    : categoryMarkerSvg(issue.category, tokens.iconSecondary);
+    : categoryMarkerSvg(issue.category, tokens.textOnBrand, selected ? 24 : 17);
+  const state = `${selected ? " is-selected" : ""}${hasPhoto ? " has-photo" : ""}`;
   return L.divIcon({
     className: "map-marker-root",
     iconSize: [hit, hit],
     iconAnchor: [hit / 2, hit / 2],
-    html: `<span class="civic-marker${selected ? " is-selected" : ""}" role="img" aria-label="${escapeHtml(label)}" style="width:${media}px;height:${media}px">${inner}</span>`,
+    html: `<span class="civic-marker${state}" role="img" aria-label="${escapeHtml(label)}" style="width:${media}px;height:${media}px;--marker-tint:${tint}">${inner}</span>`,
   });
 }
 
@@ -295,7 +303,7 @@ export function WardMap({
   here = WARD_CENTER,
   recenterNonce = 0,
   locale = "en",
-  sheetPeek = 84,
+  sheetPeek = 0,
   reportLabel,
   reportAria,
   getMarkerLabel,

@@ -10,7 +10,6 @@ export type DistanceKm = 1 | 2 | 5;
 export type DateFilter = "any" | "today" | "7d" | "30d";
 export type TrustFilter = "gov" | "community";
 export type SortKey = "nearest" | "recent" | "confirmed" | "unresolved";
-export type MapViewMode = "map" | "list";
 
 export type LText = { en: string; hi: string; kn: string };
 
@@ -74,6 +73,10 @@ export interface Authority {
   departmentName: LText;
   roleName: LText;
   officerName: LText | null;
+  /** Dummy demo handle used to tag the office when a resident escalates on X. */
+  orgHandle?: string;
+  /** Dummy demo handle for the named officer, when one is on record. */
+  officerHandle?: string;
   officerVerified: boolean;
   officerCurrent: boolean;
   wardOffice: LText;
@@ -89,6 +92,8 @@ export interface Representative {
   role: "councillor" | "mla";
   title: LText;
   name: LText | null;
+  /** Dummy demo handle so escalation posts can tag the elected representative. */
+  handle?: string;
   vacant?: boolean;
 }
 

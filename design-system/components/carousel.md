@@ -2,13 +2,13 @@
 
 **Purpose:** Browse nearby issues one-at-a-time over the map, keeping the selected issue’s photo large on the map.
 
-**Anatomy:** full-bleed evidence media · scrim · category · status · title · support count
+**Anatomy:** full-bleed evidence media · scrim · status · title · support count
 
 **Variants:** default | selected (centered snap)
 
 **States:** default, focus, pressed, selected
 
-**Tokens:** `carousel.height`, `carousel.cardWidth`, `carousel.gap`, `carousel.peek`, `card.radius`, `overlay.scrimStrong`, `type.headingSm`, `type.caption`
+**Tokens:** `carousel.height`, `carousel.cardWidth`, `carousel.gap`, `carousel.peek`, `card.radius`, `overlay.photo`, `type.headingSm`, `type.caption`
 
 **Sizing:** Card width `carousel.cardWidth` so neighbours peek. Height `carousel.height`. Hit target is the full card (≥44px).
 

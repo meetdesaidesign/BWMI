@@ -2,56 +2,44 @@
 
 /* eslint-disable @next/next/no-img-element -- captured data URLs must render through a native img */
 
-import { Camera, Check, CircleAlert, Crosshair, MapPin, RotateCcw } from "lucide-react";
+import { Camera, CircleAlert, RotateCcw } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "antd-mobile";
 import { TopBar } from "./top-bar";
 import { OverlaySheet } from "./overlay-sheet";
+import { LocationCard, locationView, type LocationAction } from "./location-card";
 import type { getCopy } from "@/lib/i18n";
-import type { AnalysisStatus, LocationFix, PhotoIssue } from "@/lib/types";
-
-type LocationAction = "use" | "change" | "adjust" | "retry";
-
-function locationRow(fix: LocationFix, t: ReturnType<typeof getCopy>) {
-  switch (fix.status) {
-    case "ready":
-      return { text: t.locationArea, action: t.locationChange, intent: "change" as LocationAction, tone: "ok" as const };
-    case "finding":
-      return { text: t.locationFinding, action: null, intent: null, tone: "busy" as const };
-    case "approximate":
-      return { text: t.locationApproximate, action: t.locationAdjust, intent: "adjust" as LocationAction, tone: "warn" as const };
-    case "unavailable":
-      return { text: t.locationUnavailable, action: t.retry, intent: "retry" as LocationAction, tone: "error" as const };
-    default:
-      return { text: t.locationAdd, action: t.locationUse, intent: "use" as LocationAction, tone: "idle" as const };
-  }
-}
+import type { AnalysisStatus, Locale, LocationFix, PhotoIssue } from "@/lib/types";
 
 export function CaptureScreen({
   t,
+  locale,
   photo,
   photoIssue,
   analysis,
   location,
+  routedTo,
   offline,
   onBack,
   onFile,
   onRemovePhoto,
-  onSamplePhoto,
+  onContinueAsGuest,
   onLocationAction,
   onRetryAnalysis,
   onContinue,
 }: {
   t: ReturnType<typeof getCopy>;
+  locale: Locale;
   photo: string | null;
   photoIssue: PhotoIssue;
   analysis: AnalysisStatus;
   location: LocationFix;
+  routedTo?: string;
   offline: boolean;
   onBack: () => void;
   onFile: (file?: File) => void;
   onRemovePhoto: () => void;
-  onSamplePhoto: () => void;
+  onContinueAsGuest: () => Promise<void>;
   onLocationAction: (action: LocationAction) => void;
   onRetryAnalysis: () => void;
   onContinue: () => void;
@@ -59,14 +47,25 @@ export function CaptureScreen({
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [guestPending, setGuestPending] = useState(false);
 
-  const row = locationRow(location, t);
+  const view = locationView(location, t, locale);
   const locationReady = location.status === "ready" || location.status === "approximate";
   const canContinue = Boolean(photo) && locationReady;
   const busy = analysis === "running";
 
   const openCamera = () => cameraRef.current?.click();
   const openGallery = () => galleryRef.current?.click();
+
+  const continueAsGuest = async () => {
+    if (guestPending) return;
+    setGuestPending(true);
+    try {
+      await onContinueAsGuest();
+    } finally {
+      setGuestPending(false);
+    }
+  };
 
   /* One polite announcement channel for progress, location, and upload errors. */
   const announcement = photoIssue === "uploadFailed"
@@ -75,7 +74,7 @@ export function CaptureScreen({
       ? t.photoUnclear
       : busy
         ? t.photoChecking
-        : row.text;
+        : `${view.status}. ${view.detail}`;
 
   return (
     <div className="full-page capture-page">
@@ -117,29 +116,15 @@ export function CaptureScreen({
         </p>
       )}
 
-      <div className="capture-secondary">
-        <button type="button" className="gallery-link" onClick={openGallery}>{t.upload}</button>
-        {/* Demo builds only — the inline env check lets the compiler strip this from production. */}
-        {process.env.NEXT_PUBLIC_DEMO_SAMPLE === "true" && <button type="button" className="sample-link" onClick={onSamplePhoto}>{t.demoPhotoHint}</button>}
-      </div>
-
-      <div className={`location-row tone-${row.tone}`}>
-        <span className="location-row-icon" aria-hidden>
-          {row.tone === "ok" ? <Check size={18} /> : row.tone === "error" ? <CircleAlert size={18} /> : row.tone === "busy" ? <span className="spinner" /> : <MapPin size={18} />}
-        </span>
-        <strong className="type-label-md">{row.text}</strong>
-        {row.action && row.intent && (
-          <button
-            type="button"
-            className="location-row-action"
-            aria-label={row.intent === "change" ? t.locationChange : row.action}
-            onClick={() => onLocationAction(row.intent)}
-          >
-            {row.intent === "adjust" && <Crosshair size={15} aria-hidden />}
-            {row.action}
+      {!photo && (
+        <div className="capture-secondary">
+          <button type="button" className="guest-link" disabled={guestPending} aria-busy={guestPending} onClick={() => void continueAsGuest()}>
+            {t.continueAsGuest}
           </button>
-        )}
-      </div>
+        </div>
+      )}
+
+      <LocationCard t={t} locale={locale} location={location} routedTo={routedTo} onAction={onLocationAction} />
 
       {offline && photo && <p className="capture-offline">{t.savedOffline}</p>}
 

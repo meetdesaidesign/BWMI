@@ -10,12 +10,16 @@
     "min": "44px"
   },
   "nav": {
-    "height": "64px",
-    "heightLandscape": "56px",
+    "height": "72px",
+    "heightLandscape": "60px",
     "inset": "{space.3}",
     "insetX": "{space.4}",
     "gap": "{space.3}",
-    "shadow": "{shadow.1}"
+    "shadow": "{shadow.1}",
+    "reportWidth": "80px",
+    "reportHeight": "{button.height}",
+    "reportWidthLandscape": "72px",
+    "reportHeightLandscape": "{touch.min}"
   },
   "demo": {
     "frameWidth": "430px",

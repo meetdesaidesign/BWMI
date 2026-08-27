@@ -26,8 +26,7 @@
     "handleHeight": "4px",
     "backdrop": "rgba(17, 24, 39, 0.40)",
     "padding": "{space.5}",
-    "collapsed": "84px",
-    "selected": "188px"
+    "collapsed": "84px"
   },
   "input": {
     "height": "48px",
@@ -35,19 +34,20 @@
     "paddingX": "{space.3}"
   },
   "marker": {
-    "size": "24px",
+    "size": "30px",
     "sizeSelected": "48px",
-    "radius": "{radius.12}",
-    "border": "4px",
-    "borderSelected": "8px",
+    "radius": "{radius.8}",
+    "radiusSelected": "{radius.12}",
+    "border": "3px",
+    "borderSelected": "4px",
     "clusterMin": "40px",
     "clusterMax": "52px"
   },
   "carousel": {
-    "height": "192px",
-    "cardWidth": "78%",
+    "height": "196px",
+    "cardWidth": "min(78cqw, 300px)",
     "gap": "{space.3}",
-    "peek": "11%"
+    "scaleIdle": "0.86"
   },
   "asset": {
     "filterTile": "80px",

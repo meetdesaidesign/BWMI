@@ -39,6 +39,16 @@
     "warning": {
       "100": "#FFF1C7",
       "700": "#805200"
+    },
+    "category": {
+      "roads": "#4A5568",
+      "waste": "#E11D48",
+      "water": "#1D4E6B",
+      "lighting": "#8A6100",
+      "drainage": "#D2690A",
+      "traffic": "#7313F5",
+      "parks": "#0B8B68",
+      "other": "#667085"
     }
   },
   "space": {

@@ -1,75 +1,28 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- issue evidence thumbnails include local SVGs and data URLs */
-
-import { ChevronDown, ChevronRight, Globe2, LocateFixed, MapPin } from "lucide-react";
+import { ChevronDown, Globe2, LocateFixed } from "lucide-react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { LocationSheet } from "./location-sheet";
 import { FilterBar, type FilterPanel } from "./filter-bar";
 import { FilterSheet, type LocationStatus } from "./filter-sheet";
+import { IssueCarousel } from "./issue-carousel";
 import { LanguageSheet } from "./language-sheet";
 import { MapLoader } from "./map-loader";
-import { ResultsSheet, type SheetSnap } from "./results-sheet";
 import { ProfileAvatar } from "./profile-avatar";
-import { CategoryIcon } from "./category-icon";
 import { areaContext } from "@/lib/authority";
 import { track } from "@/lib/analytics";
 import { applyFilters, defaultFilters, previewCount, readStoredFilters, writeStoredFilters } from "@/lib/filters";
-import { WARD_CENTER, distanceMeters, formatDistance, locateInWard, type MapViewport } from "@/lib/geo";
-import { formatCopy, getCategoryLabel, getPublicStatusLabel, getStatusLabel, type getCopy } from "@/lib/i18n";
+import { WARD_CENTER, locateInWard, type MapViewport } from "@/lib/geo";
+import { formatCopy, getPublicStatusLabel, type getCopy } from "@/lib/i18n";
 import { LOCALE_META } from "@/lib/locale";
 import { publicStatusOf } from "@/lib/public-status";
-import type { FilterState, Issue, Locale, MapViewMode } from "@/lib/types";
+import type { FilterState, Issue, Locale } from "@/lib/types";
 
-const statusClass: Record<Issue["status"], string> = {
-  reported: "slate", acknowledged: "slate", in_progress: "amber", awaiting_confirmation: "violet", confirmed: "green", contested: "red",
-};
+/** Height the map assumes for the deck before it has been measured once. */
+const DECK_PEEK_ESTIMATE = 244;
 
 function titleOf(issue: Issue, locale: Locale) {
   return locale === "hi" ? issue.titleHi : locale === "kn" ? issue.titleKn : issue.titleEn;
-}
-
-function lastUpdateOf(issue: Issue) {
-  return issue.timeline[issue.timeline.length - 1]?.date ?? issue.reportedAgoEn;
-}
-
-function IssueSummary({
-  issue,
-  locale,
-  t,
-  origin,
-  compact,
-  selected,
-  onClick,
-}: {
-  issue: Issue;
-  locale: Locale;
-  t: ReturnType<typeof getCopy>;
-  origin: [number, number];
-  compact?: boolean;
-  selected?: boolean;
-  onClick: () => void;
-}) {
-  const distance = formatDistance(distanceMeters(origin[0], origin[1], issue.lat, issue.lng), locale === "en" ? "en-IN" : locale === "hi" ? "hi-IN" : "kn-IN");
-  return (
-    <button type="button" className={`issue-summary ${compact ? "is-compact" : ""} ${selected ? "is-selected" : ""}`} onClick={onClick}>
-      <span className="issue-summary-media">
-        {issue.image ? <img src={issue.image} alt="" loading={compact || selected ? "eager" : "lazy"} /> : <CategoryIcon category={issue.category} size={28} />}
-      </span>
-      <span className="issue-summary-body">
-        <span className="issue-summary-meta">
-          <span className="issue-summary-category"><CategoryIcon category={issue.category} size={14} />{getCategoryLabel(issue.category, locale)}</span>
-          <span className={`status-pill ${statusClass[issue.status]}`}>{getStatusLabel(issue.status, locale)}</span>
-        </span>
-        <strong className={compact ? "type-heading-sm" : "type-heading-sm"}>{titleOf(issue, locale)}</strong>
-        <span className="type-caption"><MapPin size={12} />{issue.address} · {distance}</span>
-        <span className="type-caption">{formatCopy(t.confirmations, { count: issue.supporters })}</span>
-        {issue.mergedCount ? <span className="type-caption">{formatCopy(t.reportsMerged, { count: issue.mergedCount })}</span> : null}
-        <span className="type-caption">{formatCopy(t.lastUpdate, { time: lastUpdateOf(issue) })}</span>
-      </span>
-      <ChevronRight size={16} aria-hidden />
-    </button>
-  );
 }
 
 export type NearbyScreenHandle = {
@@ -99,14 +52,16 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
 }, ref) {
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
-  const [snap, setSnap] = useState<SheetSnap>("collapsed");
-  const [view, setView] = useState<MapViewMode>("map");
   const [recenterNonce, setRecenterNonce] = useState(0);
   const [here, setHere] = useState<[number, number]>(WARD_CENTER);
   const [gps, setGps] = useState<[number, number] | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
   const [viewport, setViewport] = useState<MapViewport | null>(null);
-  const [sheetPeek, setSheetPeek] = useState(84);
+  // Snapshot of the ids the deck opened with. The map recentres on every swipe,
+  // which reorders the distance-sorted results — the deck must not reshuffle
+  // under the thumb that is swiping it.
+  const [deckIds, setDeckIds] = useState<string[] | null>(null);
+  const [deckPeek, setDeckPeek] = useState(DECK_PEEK_ESTIMATE);
   const [filterPanel, setFilterPanel] = useState<FilterPanel | null>(null);
   const [locationOpen, setLocationOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
@@ -114,7 +69,7 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
   useImperativeHandle(ref, () => ({
     resetPeek: () => {
       setHighlightedId(null);
-      setSnap("collapsed");
+      setDeckIds(null);
     },
   }));
 
@@ -176,42 +131,51 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
     () => applyFilters(issues, filters, filters.locationScope === "visible_map" ? { ...filterContext, bounds: null } : filterContext),
     [issues, filters, filterContext],
   );
-  const listIssues = useMemo(() => applyFilters(issues, filters, filterContext), [issues, filters, filterContext]);
   const highlighted = issues.find((issue) => issue.id === highlightedId) ?? null;
+  const deckIssues = useMemo(() => {
+    if (!deckIds) return [];
+    const byId = new Map(issues.map((issue) => [issue.id, issue]));
+    return deckIds.map((id) => byId.get(id)).filter((issue): issue is Issue => issue != null);
+  }, [deckIds, issues]);
+  const deckOpen = highlighted != null && deckIssues.some((issue) => issue.id === highlighted.id);
+  const dockPeek = deckOpen ? deckPeek : 0;
   // Authority stays secondary to the location, and drops out entirely when unknown.
   const authorityLine = areaContext.corporation[locale] || areaContext.authority.organizationName[locale] || "";
   const localeTag = locale === "en" ? "en-IN" : locale === "hi" ? "hi-IN" : "kn-IN";
+
+  // Filters (or a fresh sync) can retire a card mid-deck. Drop it, keep the order.
+  useEffect(() => {
+    if (!deckIds) return;
+    const live = new Set(mapIssues.map((issue) => issue.id));
+    const pruned = deckIds.filter((id) => live.has(id));
+    if (pruned.length !== deckIds.length) setDeckIds(pruned.length > 0 ? pruned : null);
+  }, [mapIssues, deckIds]);
 
   const applyFiltersAndStore = (next: FilterState) => {
     setFilters(next);
     writeStoredFilters(next);
     if (next.locationScope === "near_me" && gps) flyToHere(gps);
     if (highlightedId && !applyFilters(issues, next, { ...filterContext, userCoordinates: gps }).some((issue) => issue.id === highlightedId)) {
-      setHighlightedId(null);
-      setSnap("collapsed");
+      clearSelection();
     }
   };
 
   const selectIssue = (issue: Issue) => {
-    if (highlightedId === issue.id) {
+    if (highlightedId === issue.id && deckOpen) {
       onOpenIssue(issue);
       return;
     }
     setHighlightedId(issue.id);
-    setSnap("selected");
-    setView("map");
+    setDeckIds((current) => {
+      if (current?.includes(issue.id)) return current;
+      const ids = mapIssues.map((item) => item.id);
+      return ids.includes(issue.id) ? ids : [issue.id, ...ids];
+    });
   };
 
   const clearSelection = () => {
     setHighlightedId(null);
-    if (view === "map") setSnap("collapsed");
-  };
-
-  const switchView = (next: MapViewMode) => {
-    setView(next);
-    if (next === "list") setSnap(snap === "collapsed" || snap === "selected" ? "half" : snap);
-    if (next === "map" && !highlightedId) setSnap("collapsed");
-    if (next === "map" && highlightedId) setSnap("selected");
+    setDeckIds(null);
   };
 
   const markerLabel = useCallback((issue: Issue) => {
@@ -221,12 +185,16 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
 
   const clusterLabel = useCallback((count: number) => formatCopy(t.clusterAria, { count }), [t]);
 
-  const empty = listIssues.length === 0;
-  const inViewUnfiltered = applyFilters(issues, { ...defaultFilters, statusGroups: [], categories: [] }, filterContext);
-  const emptyCopy = inViewUnfiltered.length === 0 ? t.noIssuesYet : t.noFilterResults;
+  const empty = mapIssues.length === 0;
+  const unfiltered = applyFilters(
+    issues,
+    { ...defaultFilters, statusGroups: [], categories: [] },
+    filters.locationScope === "visible_map" ? { ...filterContext, bounds: null } : filterContext,
+  );
+  const emptyCopy = unfiltered.length === 0 ? t.noIssuesYet : t.noFilterResults;
 
   return (
-    <div className="nearby-stage" style={{ ["--sheet-peek" as string]: `${sheetPeek}px` }}>
+    <div className="nearby-stage" style={{ ["--sheet-peek" as string]: `${dockPeek}px` }}>
       <MapLoader
         issues={mapIssues}
         selected={highlighted ?? undefined}
@@ -237,7 +205,7 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
         here={here}
         recenterNonce={recenterNonce}
         locale={locale}
-        sheetPeek={sheetPeek}
+        sheetPeek={dockPeek}
         reportLabel={t.reportProblem}
         reportAria={t.reportHereAria}
         getMarkerLabel={markerLabel}
@@ -282,55 +250,28 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
         <LocateFixed size={18} />
       </button>
 
-      <ResultsSheet
-        snap={snap}
-        onSnap={setSnap}
-        selected={Boolean(highlighted)}
-        onPeek={setSheetPeek}
-        ariaLabel={t.nearbyIssues}
-        handleLabel={t.resizeResults}
-        header={snap === "selected" ? null : (
-          <div className="sheet-header sheet-header-map">
-            <div>
-              <h2 className="type-heading-sm">{formatCopy(t.resultsNearby, { count: listIssues.length })}</h2>
-              {offline ? <p className="type-caption">{formatCopy(t.offlineUpdated, { time: new Intl.DateTimeFormat(localeTag, { hour: "numeric", minute: "2-digit" }).format(new Date()) })}</p> : null}
-            </div>
-            <div className="view-toggle" role="group" aria-label={`${t.mapView} / ${t.listView}`}>
-              <button type="button" className={view === "map" ? "is-active" : ""} aria-pressed={view === "map"} onClick={() => switchView("map")}>{t.mapView}</button>
-              <button type="button" className={view === "list" ? "is-active" : ""} aria-pressed={view === "list"} onClick={() => switchView("list")}>{t.listView}</button>
-            </div>
-          </div>
-        )}
-        selectedCard={highlighted ? (
-          <div className="sheet-selected">
-            <IssueSummary issue={highlighted} locale={locale} t={t} origin={origin} selected compact onClick={() => onOpenIssue(highlighted)} />
-          </div>
-        ) : null}
-      >
-        {empty ? (
-          <div className="empty-state">
-            <span className="asset-empty-state" aria-hidden><MapPin size={48} /></span>
-            <p className="type-body-md">{emptyCopy}</p>
-            {listIssues.length === 0 && inViewUnfiltered.length > 0 ? (
-              <button type="button" className="text-button" onClick={() => applyFiltersAndStore(defaultFilters)}>{t.clearFilters}</button>
-            ) : null}
-          </div>
-        ) : (
-          <div className="issue-list">
-            {listIssues.map((issue) => (
-              <IssueSummary
-                key={issue.id}
-                issue={issue}
-                locale={locale}
-                t={t}
-                origin={origin}
-                selected={issue.id === highlightedId}
-                onClick={() => (issue.id === highlightedId ? onOpenIssue(issue) : selectIssue(issue))}
-              />
-            ))}
-          </div>
-        )}
-      </ResultsSheet>
+      {empty && !deckOpen ? (
+        <div className="map-empty" role="status">
+          <p className="type-caption">{emptyCopy}</p>
+          {unfiltered.length > 0 ? (
+            <button type="button" className="text-button" onClick={() => applyFiltersAndStore(defaultFilters)}>{t.clearFilters}</button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {deckOpen && highlighted ? (
+        <IssueCarousel
+          issues={deckIssues}
+          selectedId={highlighted.id}
+          locale={locale}
+          t={t}
+          origin={origin}
+          onSelect={selectIssue}
+          onOpen={onOpenIssue}
+          onClose={clearSelection}
+          onHeight={setDeckPeek}
+        />
+      ) : null}
 
       <FilterSheet
         open={filterPanel !== null}
