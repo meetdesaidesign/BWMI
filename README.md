@@ -29,7 +29,7 @@ All ward, official, contact, issue, and performance data is fictional and labell
 
 - `OPENAI_API_KEY`: enables real vision extraction.
 - `OPENAI_MODEL`: defaults to `gpt-5.4-mini`.
-- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`: loads the styled Google basemap. Restrict the key to localhost and the GitHub Pages origin. Without it, Nearby falls back to quiet OpenStreetMap tiles.
+- `NEXT_PUBLIC_CARTO_API_KEY`: optional. Loads CARTO Voyager tiles. Without it, Nearby uses Esri World Street Map tiles (no key, no watermark). Request a free CARTO key at https://carto.com/basemaps/apikey.
 - Supabase variables are reserved for the persistence phase after the self-contained hackathon demo.
 
 ## Checks
