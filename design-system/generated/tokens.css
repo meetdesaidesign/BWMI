@@ -24,10 +24,11 @@
   --input-height: 48px;
   --input-radius: 12px;
   --input-padding-x: 12px;
-  --marker-size: 36px;
-  --marker-size-selected: 44px;
-  --marker-radius: 9999px;
-  --marker-border: 3px;
+  --marker-size: 24px;
+  --marker-size-selected: 48px;
+  --marker-radius: 12px;
+  --marker-border: 4px;
+  --marker-border-selected: 8px;
   --marker-cluster-min: 40px;
   --marker-cluster-max: 52px;
   --carousel-height: 192px;

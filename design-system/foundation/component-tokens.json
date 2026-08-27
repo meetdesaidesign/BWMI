@@ -35,10 +35,11 @@
     "paddingX": "{space.3}"
   },
   "marker": {
-    "size": "36px",
-    "sizeSelected": "44px",
-    "radius": "{radius.full}",
-    "border": "3px",
+    "size": "24px",
+    "sizeSelected": "48px",
+    "radius": "{radius.12}",
+    "border": "4px",
+    "borderSelected": "8px",
     "clusterMin": "40px",
     "clusterMax": "52px"
   },

@@ -16,7 +16,7 @@
 
 **Motion:** Color, background, and press scale at `motion.fast` / `motion.instant`. No layout shift. Reduced motion removes scale.
 
-**Accessibility:** `nav` with aria-label. Persistent destinations use `aria-current="page"`. Report uses `aria-label` “Report an issue”. Semantic buttons, not tabs.
+**Accessibility:** `nav` with aria-label. Persistent destinations use `aria-current="page"`. Report uses `aria-label` “Report a problem”. Semantic buttons, not tabs.
 
 **Content:** Curated English, Hindi, and Kannada strings from i18n. Visible labels: Nearby, My reports. Report is icon-only.
 

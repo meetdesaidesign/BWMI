@@ -2,11 +2,10 @@
 
 import L from "leaflet";
 import { createPortal } from "react-dom";
-import { Circle, Marker, MapContainer, Polygon, useMap, useMapEvents } from "react-leaflet";
-import { GoogleBasemap } from "./google-basemap";
+import { Circle, Marker, MapContainer, useMap, useMapEvents } from "react-leaflet";
+import { CartoBasemap } from "./carto-basemap";
 import { tokens } from "@/design-system/generated/tokens";
-import { WARD_POLYGON, WARD_CENTER, type MapViewport } from "@/lib/geo";
-import { publicStatusOf, PUBLIC_STATUS_COLOR } from "@/lib/public-status";
+import { WARD_CENTER, type MapViewport } from "@/lib/geo";
 import type { Issue, Locale } from "@/lib/types";
 import { categoryMarkerSvg } from "./category-icon";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -23,14 +22,18 @@ function escapeHtml(value: string) {
 }
 
 function markerIcon(issue: Issue, selected: boolean, label: string) {
-  const size = selected ? px(tokens.markerSizeSelected) : px(tokens.markerSize);
-  const fill = PUBLIC_STATUS_COLOR[publicStatusOf(issue)];
-  const glyph = categoryMarkerSvg(issue.category, "#ffffff");
+  const media = selected ? px(tokens.markerSizeSelected) : px(tokens.markerSize);
+  const stroke = selected ? px(tokens.markerBorderSelected) : px(tokens.markerBorder);
+  const visual = media + stroke * 2;
+  const hit = Math.max(visual, px(tokens.touchMin));
+  const inner = issue.image
+    ? `<img src="${escapeHtml(issue.image)}" alt="">`
+    : categoryMarkerSvg(issue.category, tokens.iconSecondary);
   return L.divIcon({
     className: "map-marker-root",
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    html: `<span class="civic-marker${selected ? " is-selected" : ""}" role="img" aria-label="${escapeHtml(label)}" style="--marker-fill:${fill};width:${size}px;height:${size}px">${glyph}</span>`,
+    iconSize: [hit, hit],
+    iconAnchor: [hit / 2, hit / 2],
+    html: `<span class="civic-marker${selected ? " is-selected" : ""}" role="img" aria-label="${escapeHtml(label)}" style="width:${media}px;height:${media}px">${inner}</span>`,
   });
 }
 
@@ -314,13 +317,8 @@ export function WardMap({
   getClusterLabel: (count: number) => string;
 }) {
   return (
-    <MapContainer center={WARD_CENTER} zoom={15} maxZoom={21} zoomControl={false} attributionControl={false} className="ward-map">
-      <GoogleBasemap />
-      <Polygon
-        positions={WARD_POLYGON}
-        interactive={false}
-        pathOptions={{ color: tokens.actionPrimary, weight: 2, fillColor: tokens.actionPrimary, fillOpacity: 0.06 }}
-      />
+    <MapContainer center={WARD_CENTER} zoom={15} maxZoom={20} zoomControl={false} attributionControl={false} className="ward-map">
+      <CartoBasemap />
       <MapLayers
         issues={issues}
         selected={selected}

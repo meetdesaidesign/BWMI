@@ -3,17 +3,21 @@
 /* eslint-disable @next/next/no-img-element -- user-captured data URLs and local evidence require native img previews */
 
 import {
-  ArrowLeft, ArrowRight, Camera, Check, CircleAlert, Globe2,
-  ImagePlus, LocateFixed, MapPin, RotateCcw, ShieldCheck,
+  ArrowRight, Building2, Check, CircleAlert, Globe2,
+  ImagePlus, MapPin, ShieldCheck,
   Sparkles, Users, X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Button, NavBar, Toast } from "antd-mobile";
+import { Button, Toast } from "antd-mobile";
 import { formatCopy, getCopy, getStatusLabel, localizedField } from "@/lib/i18n";
 import { LOCALE_META, resolveInitialLocale, writeStoredLocale } from "@/lib/locale";
 import { seedIssues, WARD_CENTER } from "@/lib/seed";
+import { areaContext } from "@/lib/authority";
+import { locateInWard } from "@/lib/geo";
 import { assetPath } from "@/lib/assets";
-import type { AIExtraction, Category, Issue, Locale } from "@/lib/types";
+import { LOCATION_ACCURACY_LIMIT_M, PHOTO_MIN_EDGE_PX } from "@/lib/config";
+import { clearDraft, readDraft, writeDraft } from "@/lib/draft";
+import type { AIExtraction, AnalysisStatus, Category, Issue, Locale, LocationFix, PhotoIssue } from "@/lib/types";
 import { StoryCard } from "./story-card";
 import { ProfileAvatar } from "./profile-avatar";
 import { ProfileSheet } from "./profile-sheet";
@@ -21,6 +25,10 @@ import { CategoryIcon } from "./category-icon";
 import { NearbyScreen, type NearbyScreenHandle } from "./nearby-screen";
 import { LanguageSheet } from "./language-sheet";
 import { BottomNavigation } from "./bottom-navigation";
+import { TopBar } from "./top-bar";
+import { CaptureScreen, type LocationAction } from "./capture-screen";
+import { PinSheet } from "./pin-sheet";
+import { OverlaySheet } from "./overlay-sheet";
 import { readStoredPhoneVerified, writeStoredPhoneVerified } from "@/lib/profile";
 
 type Screen = "nearby" | "mine" | "issue" | "capture" | "analyzing" | "review" | "success" | "contest" | "confirmed" | "story";
@@ -34,6 +42,16 @@ function isReportHistory(state: unknown) {
 
 const statusClass: Record<Issue["status"], string> = {
   reported: "slate", acknowledged: "slate", in_progress: "amber", awaiting_confirmation: "violet", confirmed: "green", contested: "red",
+};
+
+const idleLocation: LocationFix = { status: "prompt", point: null, accuracyM: null, blocked: false, manual: false };
+
+/** Step 2 stays editable when classification produces nothing usable. */
+const blankExtraction: AIExtraction = {
+  category: "Other",
+  title_en: "", title_hi: "", title_kn: "",
+  description_en: "", description_hi: "", description_kn: "",
+  severity: "medium", confidence: 0, needs_user_review: true,
 };
 
 const staticDemoExtraction: AIExtraction = {
@@ -87,7 +105,12 @@ export function FixoApp() {
   const [backed, setBacked] = useState<string[]>([]);
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
-  const [locationState, setLocationState] = useState<"idle" | "loading" | "ready" | "denied">("idle");
+  const [photoIssue, setPhotoIssue] = useState<PhotoIssue>("none");
+  const [analysis, setAnalysis] = useState<AnalysisStatus>("idle");
+  const [location, setLocation] = useState<LocationFix>(idleLocation);
+  const [pinOpen, setPinOpen] = useState(false);
+  const [rationaleOpen, setRationaleOpen] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
   const [offline, setOffline] = useState(false);
   const [extraction, setExtraction] = useState<AIExtraction | null>(null);
   const [contact, setContact] = useState("");
@@ -95,8 +118,9 @@ export function FixoApp() {
   const [contestPhoto, setContestPhoto] = useState<string | null>(null);
   const [hintReport, setHintReport] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
   const contestRef = useRef<HTMLInputElement>(null);
+  const analysisRun = useRef(0);
+  const advancing = useRef(false);
   const nearbyRef = useRef<NearbyScreenHandle>(null);
   const mineScrollRef = useRef<HTMLDivElement>(null);
   const lastHome = useRef<HomeScreen>("nearby");
@@ -107,6 +131,10 @@ export function FixoApp() {
   useEffect(() => {
     setLocale(resolveInitialLocale());
     setPhoneVerified(readStoredPhoneVerified());
+    const draft = readDraft();
+    if (!draft) return;
+    if (draft.photo) { setPhoto(draft.photo); setPhotoBase64(draft.photo); }
+    if (draft.location) setLocation(draft.location);
   }, []);
 
   useEffect(() => {
@@ -149,11 +177,26 @@ export function FixoApp() {
 
   useEffect(() => {
     const onPop = () => {
+      /* A sheet closing above the report pops its own entry — stay in the flow. */
+      if (isReportHistory(history.state)) return;
       setScreen((current) => (reportFlow.includes(current) ? lastHome.current : current));
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
+
+  /* Keep step 1 recoverable across a reload, which is the point of an offline draft. */
+  useEffect(() => {
+    if (!photo && !location.manual) return;
+    writeDraft({ photo, location });
+  }, [photo, location]);
+
+  /* The analysing screen is a waiting room: it hands off as soon as work settles. */
+  useEffect(() => {
+    if (screen !== "analyzing") return;
+    if (analysis === "done" && extraction) { navigate("review"); return; }
+    if (analysis === "failed") setScreen("capture");
+  }, [screen, analysis, extraction]);
 
   const isHome = screen === "nearby" || screen === "mine";
 
@@ -187,13 +230,13 @@ export function FixoApp() {
   const openReport = () => {
     if (reportFlow.includes(screen) || openingReport.current) return;
     openingReport.current = true;
-    requestLocation();
+    void primeLocation();
     if (!isReportHistory(history.state)) history.pushState({ fixo: "report" }, "");
     setScreen("capture");
     window.setTimeout(() => { openingReport.current = false; }, 400);
   };
 
-  const closeReport = () => {
+  const leaveReport = () => {
     if (isReportHistory(history.state)) {
       history.back();
       return;
@@ -201,19 +244,55 @@ export function FixoApp() {
     goHome(lastHome.current);
   };
 
+  /** Ask before discarding only when there is something to lose (spec section 8). */
+  const closeReport = () => {
+    if (photo || location.manual) { setDiscardOpen(true); return; }
+    leaveReport();
+  };
+
+  const discardReport = () => {
+    setDiscardOpen(false);
+    resetReport();
+    leaveReport();
+  };
+
+  const resetReport = () => {
+    analysisRun.current += 1;
+    clearDraft();
+    setPhoto(null); setPhotoBase64(null); setPhotoIssue("none");
+    setAnalysis("idle"); setExtraction(null); setDifferent(false);
+    setLocation(idleLocation);
+  };
+
   const chooseIssue = (issue: Issue) => { setSelectedId(issue.id); navigate("issue"); };
 
   const readFile = (file?: File, contest = false) => {
     if (!file) return;
+    if (!file.type.startsWith("image/")) { Toast.show({ content: t.photoUnclear, position: "bottom" }); return; }
     if (file.size > 8 * 1024 * 1024) { Toast.show({ content: t.photoTooLarge, position: "bottom" }); return; }
     const reader = new FileReader();
     reader.onload = () => {
       const url = String(reader.result);
       if (contest) { setContestPhoto(url); return; }
-      setPhoto(url); setPhotoBase64(url);
-      requestLocation();
+      /* Decode first: an image we cannot render is not usable evidence. */
+      const probe = new Image();
+      probe.onload = () => {
+        setPhoto(url); setPhotoBase64(url);
+        setPhotoIssue(Math.min(probe.naturalWidth, probe.naturalHeight) < PHOTO_MIN_EDGE_PX ? "unclear" : "none");
+        void runAnalysis(url);
+      };
+      probe.onerror = () => Toast.show({ content: t.photoUnclear, position: "bottom" });
+      probe.src = url;
     };
     reader.readAsDataURL(file);
+  };
+
+  const removePhoto = () => {
+    analysisRun.current += 1;
+    setPhoto(null); setPhotoBase64(null); setPhotoIssue("none");
+    setAnalysis("idle"); setExtraction(null);
+    clearDraft();
+    Toast.show({ content: t.photoRemoved, position: "bottom" });
   };
 
   const loadDemoPhoto = async () => {
@@ -222,29 +301,97 @@ export function FixoApp() {
     readFile(new File([blob], "demo-pothole.jpg", { type: "image/jpeg" }));
   };
 
-  const requestLocation = () => {
-    if (!navigator.geolocation) { setLocationState("denied"); return; }
-    setLocationState("loading");
-    navigator.geolocation.getCurrentPosition(() => setLocationState("ready"), () => setLocationState("denied"), { timeout: 5000, enableHighAccuracy: true });
+  const resolveLocation = () => {
+    if (!navigator.geolocation) { setLocation((fix) => ({ ...fix, status: "unavailable", blocked: true })); return; }
+    setLocation((fix) => ({ ...fix, status: "finding" }));
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const accuracyM = position.coords.accuracy;
+        setLocation({
+          status: accuracyM > LOCATION_ACCURACY_LIMIT_M ? "approximate" : "ready",
+          point: locateInWard(position.coords.latitude, position.coords.longitude),
+          accuracyM,
+          blocked: false,
+          manual: false,
+        });
+      },
+      (error) => setLocation((fix) => ({ ...fix, status: "unavailable", blocked: error.code === error.PERMISSION_DENIED })),
+      { timeout: 8000, enableHighAccuracy: true },
+    );
   };
 
-  const analyze = async () => {
-    if (!photoBase64) return;
-    navigate("analyzing");
+  /**
+   * Resolve quietly when permission already exists; otherwise leave the row on
+   * 'Add location' rather than firing an unexplained prompt (spec section 7).
+   */
+  const primeLocation = async () => {
+    if (location.status !== "prompt") return;
+    try {
+      const permission = await navigator.permissions?.query({ name: "geolocation" as PermissionName });
+      if (permission?.state === "granted") { resolveLocation(); return; }
+      if (permission?.state === "denied") setLocation((fix) => ({ ...fix, blocked: true }));
+    } catch {
+      /* Permissions API unavailable — wait for the resident to ask. */
+    }
+  };
+
+  const onLocationAction = (action: LocationAction) => {
+    if (action === "change" || action === "adjust") { setPinOpen(true); return; }
+    if (action === "retry" && location.blocked) { setPinOpen(true); return; }
+    if (action === "use" && location.blocked) { setPinOpen(true); return; }
+    if (action === "use") { setRationaleOpen(true); return; }
+    resolveLocation();
+  };
+
+  const confirmPin = (point: [number, number]) => {
+    setPinOpen(false);
+    setLocation((fix) => ({ ...fix, status: "ready", point, accuracyM: null, manual: true }));
+  };
+
+  /** Upload and classify in the background as soon as a photo exists (spec section 7). */
+  const runAnalysis = async (image: string) => {
+    const run = ++analysisRun.current;
+    setAnalysis("running");
+    setPhotoIssue((issue) => (issue === "uploadFailed" ? "none" : issue));
+
     if (process.env.NEXT_PUBLIC_STATIC_DEMO === "true") {
-      setExtraction(staticDemoExtraction);
-      window.setTimeout(() => navigate("review"), 900);
+      window.setTimeout(() => {
+        if (analysisRun.current !== run) return;
+        setExtraction(staticDemoExtraction);
+        setAnalysis("done");
+      }, 900);
       return;
     }
+
     try {
-      const response = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: photoBase64 }) });
+      const response = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image }) });
       if (!response.ok) throw new Error("analysis failed");
       const result = await response.json() as AIExtraction;
-      setExtraction(result);
+      if (analysisRun.current !== run) return;
+      /* A reply we cannot use is not an upload failure — step 2 opens blank and editable. */
+      setExtraction(result?.category ? result : blankExtraction);
+      setAnalysis("done");
     } catch {
-      setExtraction({ category: "Roads", title_en: "Road surface damage", title_hi: "सड़क की सतह क्षतिग्रस्त", title_kn: "ರಸ್ತೆ ಮೇಲ್ಮೈ ಹಾನಿ", description_en: "A damaged patch of road needs a check.", description_hi: "सड़क के क्षतिग्रस्त हिस्से की जाँच आवश्यक है।", description_kn: "ರಸ್ತೆಯ ಹಾನಿಯಾದ ಭಾಗವನ್ನು ಪರಿಶೀಲಿಸಬೇಕು.", severity: "medium", confidence: 0.42, needs_user_review: true, duplicate_id: "FX-14028" });
+      if (analysisRun.current !== run) return;
+      setAnalysis("failed");
+      setPhotoIssue("uploadFailed");
     }
-    window.setTimeout(() => navigate("review"), 500);
+  };
+
+  const retryAnalysis = () => {
+    if (!photoBase64) return;
+    void runAnalysis(photoBase64);
+  };
+
+  const openReview = () => {
+    if (!photo || !photoBase64) return;
+    if (location.status !== "ready" && location.status !== "approximate") return;
+    if (advancing.current) return;
+    advancing.current = true;
+    window.setTimeout(() => { advancing.current = false; }, 500);
+    if (analysis === "done" && extraction) { navigate("review"); return; }
+    if (analysis !== "running") void runAnalysis(photoBase64);
+    navigate("analyzing");
   };
 
   const backIssue = (id: string) => {
@@ -257,16 +404,19 @@ export function FixoApp() {
   const submitReport = () => {
     if (!extraction) return;
     const now = new Date().toISOString();
+    const reportPoint = location.point ?? [WARD_CENTER[0] - 0.0004, WARD_CENTER[1] - 0.0007];
     const newIssue: Issue = {
       id: `FX-14${40 + issues.length}`, category: extraction.category,       titleEn: extraction.title_en, titleHi: extraction.title_hi, titleKn: extraction.title_kn || extraction.title_en,
-      descriptionEn: extraction.description_en, descriptionHi: extraction.description_hi, descriptionKn: extraction.description_kn || extraction.description_en, address: "Near your current location · Jayanagar", lat: WARD_CENTER[0] - 0.0004, lng: WARD_CENTER[1] - 0.0007,
+      descriptionEn: extraction.description_en, descriptionHi: extraction.description_hi, descriptionKn: extraction.description_kn || extraction.description_en, address: `Near your current location · ${t.locationArea}`, lat: reportPoint[0], lng: reportPoint[1],
       image: photo ?? assetPath("/images/pothole-ambedkar.jpg"), supporters: 1, aliases: ["You"], status: "reported", severity: extraction.severity,
       reportedAgoEn: "Just now", reportedAgoHi: "अभी", reportedAgoKn: "ಈಗಷ್ಟೇ", reportedAt: now, updatedAt: now,
       departmentEn: "Finding the right team", departmentHi: "सही टीम ढूँढ रहे हैं", departmentKn: "ಸರಿಯಾದ ತಂಡ ಹುಡುಕುತ್ತಿದ್ದೇವೆ", roleEn: "Ward control room", roleHi: "वार्ड नियंत्रण कक्ष", roleKn: "ವಾರ್ಡ್ ನಿಯಂತ್ರಣ ಕೋಣೆ",
       escalationEn: "Ward office · 1800-14-0014", escalationHi: "वार्ड कार्यालय · 1800-14-0014", escalationKn: "ವಾರ್ಡ್ ಕಚೇರಿ · 1800-14-0014", expectedEn: "Update after routing", expectedHi: "रूटिंग के बाद अपडेट", expectedKn: "ರೂಟಿಂಗ್ ನಂತರ ಅಪ್‌ಡೇಟ್", mine: true, routingPending: true, trust: [],
       timeline: [{ status: "reported", labelEn: "Submitted", labelHi: "जमा हुई", labelKn: "ಸಲ್ಲಿಸಲಾಗಿದೆ", date: "Just now", noteEn: "Photo and approximate location added", noteHi: "फोटो और अनुमानित जगह जोड़ी गई", noteKn: "ಫೋಟೋ ಮತ್ತು ಅಂದಾಜು ಸ್ಥಳ ಸೇರಿಸಲಾಗಿದೆ" }],
     };
-    setIssues((list) => [newIssue, ...list]); setSelectedId(newIssue.id); navigate("success");
+    setIssues((list) => [newIssue, ...list]); setSelectedId(newIssue.id);
+    clearDraft();
+    navigate("success");
   };
 
   const confirmFix = () => {
@@ -339,16 +489,47 @@ export function FixoApp() {
       {!isHome && (
         <div className="flow-layer">
           {screen === "issue" && <IssueDetail issue={selected} locale={locale} t={t} backed={backed.includes(selected.id)} onBack={() => goHome(lastHome.current)} onBackIssue={() => backIssue(selected.id)} onConfirm={confirmFix} onContest={() => navigate("contest")} />}
-          {screen === "capture" && <CaptureScreen locale={locale} t={t} photo={photo} locationState={locationState} fileRef={fileRef} onBack={closeReport} onFile={(f) => readFile(f)} onDemoPhoto={loadDemoPhoto} onLocation={requestLocation} onContinue={analyze} />}
+          {screen === "capture" && (
+            <CaptureScreen
+              t={t}
+              photo={photo}
+              photoIssue={photoIssue}
+              analysis={analysis}
+              location={location}
+              offline={offline}
+              onBack={closeReport}
+              onFile={(file) => readFile(file)}
+              onRemovePhoto={removePhoto}
+              onSamplePhoto={loadDemoPhoto}
+              onLocationAction={onLocationAction}
+              onRetryAnalysis={retryAnalysis}
+              onContinue={openReview}
+            />
+          )}
           {screen === "analyzing" && <AnalyzingScreen t={t} photo={photo} />}
-          {screen === "review" && extraction && <ReviewScreen locale={locale} t={t} extraction={extraction} setExtraction={setExtraction} photo={photo} locationState={locationState} contact={contact} setContact={setContact} duplicate={issues.find((i) => i.id === extraction.duplicate_id)} different={different} setDifferent={setDifferent} onBack={() => navigate("capture")} onBackExisting={(i) => { backIssue(i.id); setSelectedId(i.id); navigate("issue"); }} onSubmit={submitReport} />}
-          {screen === "success" && <ResultScreen icon="sent" eyebrow={t.submittedEyebrow} title={t.submitted} body={t.submittedHelp} primary={t.viewReport} onPrimary={() => navigate("issue")} />}
+          {screen === "review" && extraction && <ReviewScreen locale={locale} t={t} extraction={extraction} setExtraction={setExtraction} photo={photo} locationState={location.status} contact={contact} setContact={setContact} duplicate={issues.find((i) => i.id === extraction.duplicate_id)} different={different} setDifferent={setDifferent} onBack={() => navigate("capture")} onBackExisting={(i) => { backIssue(i.id); setSelectedId(i.id); navigate("issue"); }} onSubmit={submitReport} />}
+          {screen === "success" && <ResultScreen icon="sent" eyebrow={t.submittedEyebrow} title={t.submitted} body={t.submittedHelp} meta={<p className="result-authority"><Building2 size={16} aria-hidden />{areaContext.authority.organizationName[locale]} · {t.routingInProgress}</p>} primary={t.viewReport} onPrimary={() => navigate("issue")} />}
           {screen === "contest" && <ContestScreen t={t} photo={contestPhoto} fileRef={contestRef} onFile={(f) => readFile(f, true)} onBack={() => navigate("issue")} onSubmit={contestFix} />}
           {screen === "confirmed" && <ResultScreen icon="confirmed" eyebrow={t.confirmedEyebrow} title={t.confirmedTitle} body={t.confirmedHelp} primary={t.makeCard} onPrimary={() => navigate("story")} secondary={t.viewReport} onSecondary={() => navigate("issue")} />}
           {screen === "story" && <div className="full-page"><TopBar title={t.shareCardTitle} onBack={() => navigate("confirmed")} /><div className="story-page"><h1 className="type-heading-lg">{t.shareCardTitle}</h1><p className="type-body-md">{t.shareCardHelp}</p><StoryCard locale={locale} t={t} /></div></div>}
         </div>
       )}
       <LanguageSheet open={languageOpen} locale={locale} t={t} onClose={() => setLanguageOpen(false)} onChange={setLocale} />
+      <PinSheet open={pinOpen} t={t} center={location.point} onClose={() => setPinOpen(false)} onConfirm={confirmPin} />
+      <OverlaySheet open={rationaleOpen} title={t.locationAllow} onClose={() => setRationaleOpen(false)} closeLabel={t.close} titleClassName="type-heading-sm">
+        <p className="type-body-md">{t.locationWhy}</p>
+        <div className="sheet-actions">
+          <Button block color="primary" size="large" className="primary-button" onClick={() => { setRationaleOpen(false); resolveLocation(); }}>{t.locationAllow}</Button>
+          <Button block fill="outline" size="large" className="secondary-button" onClick={() => { setRationaleOpen(false); setPinOpen(true); }}>{t.locationSetManually}</Button>
+        </div>
+      </OverlaySheet>
+      <OverlaySheet open={discardOpen} title={t.discardTitle} onClose={() => setDiscardOpen(false)} closeLabel={t.close} titleClassName="type-heading-sm">
+        <p className="type-body-md">{t.discardHelp}</p>
+        <div className="sheet-actions">
+          <Button block fill="outline" size="large" className="secondary-button danger" onClick={discardReport}>{t.discardConfirm}</Button>
+          <Button block color="primary" size="large" className="primary-button" onClick={() => setDiscardOpen(false)}>{t.discardKeep}</Button>
+        </div>
+      </OverlaySheet>
       <ProfileSheet
         open={profileOpen}
         t={t}
@@ -384,10 +565,6 @@ function IssueCard({ issue, locale, t, selected, onClick }: { issue: Issue; loca
   );
 }
 
-function TopBar({ title, onBack, action }: { title: string; onBack: () => void; action?: React.ReactNode }) {
-  return <header className="top-bar"><NavBar backArrow={<ArrowLeft size={21} />} onBack={onBack} right={action}>{title}</NavBar></header>;
-}
-
 function IssueDetail({ issue, locale, t, backed, onBack, onBackIssue, onConfirm, onContest }: { issue: Issue; locale: Locale; t: ReturnType<typeof getCopy>; backed: boolean; onBack: () => void; onBackIssue: () => void; onConfirm: () => void; onContest: () => void }) {
   return <div className="full-page issue-detail">
     <TopBar title={issue.id} onBack={onBack} action={<StatusPill issue={issue} locale={locale} />} />
@@ -409,16 +586,6 @@ function IssueDetail({ issue, locale, t, backed, onBack, onBackIssue, onConfirm,
       {issue.status === "awaiting_confirmation" && <section className="confirm-card"><div className="confirmation-seal"><ShieldCheck size={24} /></div><p className="eyebrow">{t.statusCheckFix}</p><h2 className="type-heading-md">{t.awaiting}</h2><p className="type-body-md">{t.inspect}</p><Button block color="success" size="large" className="primary-button green" onClick={onConfirm}><Check size={18} />{t.fixed}</Button><Button block fill="outline" size="large" className="secondary-button danger" onClick={onContest}><X size={18} />{t.broken}</Button></section>}
       {issue.status === "confirmed" && <p className="type-body-md">{t.confirmedByResidents}</p>}
     </article>
-  </div>;
-}
-
-function CaptureScreen({ t, photo, locationState, fileRef, onBack, onFile, onDemoPhoto, onLocation, onContinue }: { locale: Locale; t: ReturnType<typeof getCopy>; photo: string | null; locationState: string; fileRef: React.RefObject<HTMLInputElement | null>; onBack: () => void; onFile: (f?: File) => void; onDemoPhoto: () => void; onLocation: () => void; onContinue: () => void }) {
-  return <div className="full-page capture-page"><TopBar title={t.reportProblem} onBack={onBack} /><div className="capture-copy"><p className="eyebrow">{t.captureStep}</p><h1 className="type-heading-lg">{t.capture}</h1><p className="type-body-md">{t.captureHelp}</p></div>
-    <input ref={fileRef} hidden type="file" accept="image/*" capture="environment" onChange={(e) => onFile(e.target.files?.[0])} />
-    <button className={`camera-stage ${photo ? "has-photo" : ""}`} onClick={onDemoPhoto}>{photo ? <><img src={photo} alt={t.photoAlt} /><span><RotateCcw size={16} />{t.retakePhoto}</span></> : <><div className="camera-lens"><Camera size={34} /></div><strong className="type-label-md">{t.camera}</strong><span className="type-caption">{t.demoPhotoHint}</span></>}</button>
-    <button className="gallery-button" onClick={() => fileRef.current?.click()}><ImagePlus size={17} />{t.upload}</button>
-    <div className="capture-location"><button onClick={onLocation}><LocateFixed size={18} />{locationState === "loading" ? t.locating : t.location}</button>{locationState === "ready" && <span className="location-ok"><Check size={14} />{t.locationReady}</span>}{locationState === "denied" && <span className="location-warn"><CircleAlert size={14} />{t.permission}</span>}</div>
-    <div className="sticky-action"><Button block color="primary" size="large" className="primary-button" disabled={!photo} onClick={onContinue}>{t.continue}<ArrowRight size={18} /></Button></div>
   </div>;
 }
 
@@ -446,6 +613,6 @@ function ContestScreen({ t, photo, fileRef, onFile, onBack, onSubmit }: { t: Ret
   return <div className="full-page contest-page"><TopBar title={t.reopen} onBack={onBack} /><div className="capture-copy"><p className="eyebrow">{t.contestStep}</p><h1 className="type-heading-lg">{t.contestTitle}</h1><p className="type-body-md">{t.contestHelp}</p></div><input ref={fileRef} hidden type="file" accept="image/*" capture="environment" onChange={(e) => onFile(e.target.files?.[0])} /><button className={`contest-upload ${photo ? "has-photo" : ""}`} onClick={() => fileRef.current?.click()}>{photo ? <img src={photo} alt={t.photoAlt} /> : <><ImagePlus size={30} /><strong className="type-label-md">{t.camera}</strong><span className="type-caption">{t.upload}</span></>}</button><div className="contest-note"><ShieldCheck size={18} /><p className="type-caption">{t.contestNote}</p></div><div className="sticky-action"><Button block color="danger" size="large" className="primary-button danger-fill" disabled={!photo} onClick={onSubmit}>{t.reopen}<ArrowRight size={18} /></Button></div></div>;
 }
 
-function ResultScreen({ icon, eyebrow, title, body, primary, onPrimary, secondary, onSecondary }: { icon: "sent" | "confirmed"; eyebrow: string; title: string; body: string; primary: string; onPrimary: () => void; secondary?: string; onSecondary?: () => void }) {
-  return <div className={`result-screen ${icon}`}><div className="result-mark">{icon === "confirmed" ? <ShieldCheck size={52} /> : <><span className="pulse-ring" /><Check size={45} /></>}</div><p className="eyebrow">{eyebrow}</p><h1 className="type-display-lg">{title}</h1><p className="type-body-md">{body}</p><div className="result-proof"><span /><span /><span /><span className="active" /></div><Button block color="primary" size="large" className="primary-button" onClick={onPrimary}>{primary}<ArrowRight size={18} /></Button>{secondary && <Button block fill="outline" size="large" className="secondary-button" onClick={onSecondary}>{secondary}</Button>}</div>;
+function ResultScreen({ icon, eyebrow, title, body, meta, primary, onPrimary, secondary, onSecondary }: { icon: "sent" | "confirmed"; eyebrow: string; title: string; body: string; meta?: React.ReactNode; primary: string; onPrimary: () => void; secondary?: string; onSecondary?: () => void }) {
+  return <div className={`result-screen ${icon}`}><div className="result-mark">{icon === "confirmed" ? <ShieldCheck size={52} /> : <><span className="pulse-ring" /><Check size={45} /></>}</div><p className="eyebrow">{eyebrow}</p><h1 className="type-display-lg">{title}</h1><p className="type-body-md">{body}</p>{meta}<div className="result-proof"><span /><span /><span /><span className="active" /></div><Button block color="primary" size="large" className="primary-button" onClick={onPrimary}>{primary}<ArrowRight size={18} /></Button>{secondary && <Button block fill="outline" size="large" className="secondary-button" onClick={onSecondary}>{secondary}</Button>}</div>;
 }

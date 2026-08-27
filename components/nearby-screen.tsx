@@ -2,10 +2,9 @@
 
 /* eslint-disable @next/next/no-img-element -- issue evidence thumbnails include local SVGs and data URLs */
 
-import { ChevronRight, Globe2, LocateFixed, MapPin } from "lucide-react";
+import { ChevronDown, ChevronRight, Globe2, LocateFixed, MapPin } from "lucide-react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
-import { AuthorityCard } from "./authority-card";
-import { AccountabilitySheet, AreaSheet } from "./accountability-sheet";
+import { LocationSheet } from "./location-sheet";
 import { FilterBar, type FilterPanel } from "./filter-bar";
 import { FilterSheet, type LocationStatus } from "./filter-sheet";
 import { LanguageSheet } from "./language-sheet";
@@ -13,7 +12,7 @@ import { MapLoader } from "./map-loader";
 import { ResultsSheet, type SheetSnap } from "./results-sheet";
 import { ProfileAvatar } from "./profile-avatar";
 import { CategoryIcon } from "./category-icon";
-import { areaContext, resolveIssueAuthority } from "@/lib/authority";
+import { areaContext } from "@/lib/authority";
 import { track } from "@/lib/analytics";
 import { applyFilters, defaultFilters, previewCount, readStoredFilters, writeStoredFilters } from "@/lib/filters";
 import { WARD_CENTER, distanceMeters, formatDistance, locateInWard, type MapViewport } from "@/lib/geo";
@@ -109,8 +108,7 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
   const [viewport, setViewport] = useState<MapViewport | null>(null);
   const [sheetPeek, setSheetPeek] = useState(84);
   const [filterPanel, setFilterPanel] = useState<FilterPanel | null>(null);
-  const [accountabilityOpen, setAccountabilityOpen] = useState(false);
-  const [areaOpen, setAreaOpen] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
 
   useImperativeHandle(ref, () => ({
@@ -180,7 +178,8 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
   );
   const listIssues = useMemo(() => applyFilters(issues, filters, filterContext), [issues, filters, filterContext]);
   const highlighted = issues.find((issue) => issue.id === highlightedId) ?? null;
-  const authority = highlighted ? resolveIssueAuthority(highlighted) : areaContext.authority;
+  // Authority stays secondary to the location, and drops out entirely when unknown.
+  const authorityLine = areaContext.corporation[locale] || areaContext.authority.organizationName[locale] || "";
   const localeTag = locale === "en" ? "en-IN" : locale === "hi" ? "hi-IN" : "kn-IN";
 
   const applyFiltersAndStore = (next: FilterState) => {
@@ -239,7 +238,7 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
         recenterNonce={recenterNonce}
         locale={locale}
         sheetPeek={sheetPeek}
-        reportLabel={t.reportIssue}
+        reportLabel={t.reportProblem}
         reportAria={t.reportHereAria}
         getMarkerLabel={markerLabel}
         getClusterLabel={clusterLabel}
@@ -255,22 +254,23 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
           >
             <ProfileAvatar size={38} verified={phoneVerified} alt="" />
           </button>
-          <button type="button" className="area-selector" onClick={() => setAreaOpen(true)} aria-label={t.areaSelectorAria}>
-            <span>{areaContext.areaName[locale]}</span>
-            <small>{areaContext.corporation[locale]}</small>
+          <button
+            type="button"
+            className="area-selector"
+            onClick={() => setLocationOpen(true)}
+            aria-haspopup="dialog"
+            aria-label={`${areaContext.areaName[locale]}${authorityLine ? `, ${authorityLine}` : ""}. ${t.areaDetails}`}
+          >
+            <span className="area-selector-text">
+              <span>{areaContext.areaName[locale]}</span>
+              {authorityLine ? <small>{authorityLine}</small> : null}
+            </span>
+            <ChevronDown size={16} aria-hidden />
           </button>
           <button type="button" className="language-button" onClick={() => setLanguageOpen(true)} aria-label={t.languageAria}>
             <Globe2 size={16} />{LOCALE_META[locale].shortLabel}
           </button>
         </header>
-        <AuthorityCard
-          locale={locale}
-          t={t}
-          authority={authority}
-          issueContext={Boolean(highlighted)}
-          updatedLabel={highlighted ? lastUpdateOf(highlighted) : undefined}
-          onOpen={() => setAccountabilityOpen(true)}
-        />
         <FilterBar locale={locale} t={t} filters={filters} onOpen={setFilterPanel} />
       </div>
 
@@ -348,16 +348,7 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
         onClose={() => setFilterPanel(null)}
         onApply={applyFiltersAndStore}
       />
-      <AccountabilitySheet
-        open={accountabilityOpen}
-        locale={locale}
-        t={t}
-        area={areaContext}
-        authority={authority}
-        issueContext={Boolean(highlighted)}
-        onClose={() => setAccountabilityOpen(false)}
-      />
-      <AreaSheet open={areaOpen} locale={locale} t={t} area={areaContext} onClose={() => setAreaOpen(false)} />
+      <LocationSheet open={locationOpen} locale={locale} t={t} area={areaContext} onClose={() => setLocationOpen(false)} />
       <LanguageSheet open={languageOpen} locale={locale} t={t} onClose={() => setLanguageOpen(false)} onChange={onChangeLocale} />
     </div>
   );

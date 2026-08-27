@@ -127,3 +127,22 @@ export interface AIExtraction {
   needs_user_review: boolean;
   duplicate_id?: string | null;
 }
+
+/** Report step 1 — location row states (UX spec section 4.6). */
+export type LocationStatus = "prompt" | "finding" | "ready" | "approximate" | "unavailable";
+
+export interface LocationFix {
+  status: LocationStatus;
+  point: [number, number] | null;
+  accuracyM: number | null;
+  /** Permission was refused, so re-prompting is a no-op — offer the map instead. */
+  blocked: boolean;
+  /** The resident placed the pin themselves. */
+  manual: boolean;
+}
+
+/** Background photo upload + AI classification state. */
+export type AnalysisStatus = "idle" | "running" | "done" | "failed";
+
+/** Problems worth surfacing on the photo preview, per UX spec section 8. */
+export type PhotoIssue = "none" | "unclear" | "uploadFailed";

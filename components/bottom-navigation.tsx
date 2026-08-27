@@ -57,7 +57,7 @@ export function BottomNavigation({
       <button
         type="button"
         className={`bottom-nav-report${hint ? " is-hint" : ""}`}
-        aria-label={t.reportIssue}
+        aria-label={t.reportProblem}
         aria-busy={busy || undefined}
         disabled={busy}
         onClick={onReport}
