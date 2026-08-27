@@ -182,6 +182,20 @@ export function FixoApp() {
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
+  /* Keep step 1 recoverable across a reload, which is the point of an offline draft. */
+  useEffect(() => {
+    if (!photo && !location.manual) return;
+    writeDraft({ photo, location });
+  }, [photo, location]);
+
+  /* The analysing screen is a waiting room: it hands off as soon as work settles. */
+  useEffect(() => {
+    if (screen !== "analyzing") return;
+    if (analysis === "done" && extraction) { navigate("review"); return; }
+    if (analysis === "failed") setScreen("capture");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- navigate is re-created each render
+  }, [screen, analysis, extraction]);
+
   const isHome = screen === "nearby" || screen === "mine";
 
   const goHome = (next: HomeScreen) => {
@@ -473,9 +487,25 @@ export function FixoApp() {
       {!isHome && (
         <div className="flow-layer">
           {screen === "issue" && <IssueDetail issue={selected} locale={locale} t={t} backed={backed.includes(selected.id)} onBack={() => goHome(lastHome.current)} onBackIssue={() => backIssue(selected.id)} onConfirm={confirmFix} onContest={() => navigate("contest")} />}
-          {screen === "capture" && <CaptureScreen locale={locale} t={t} photo={photo} locationState={locationState} fileRef={fileRef} onBack={closeReport} onFile={(f) => readFile(f)} onDemoPhoto={loadDemoPhoto} onLocation={requestLocation} onContinue={analyze} />}
+          {screen === "capture" && (
+            <CaptureScreen
+              t={t}
+              photo={photo}
+              photoIssue={photoIssue}
+              analysis={analysis}
+              location={location}
+              offline={offline}
+              onBack={closeReport}
+              onFile={(file) => readFile(file)}
+              onRemovePhoto={removePhoto}
+              onSamplePhoto={loadDemoPhoto}
+              onLocationAction={onLocationAction}
+              onRetryAnalysis={retryAnalysis}
+              onContinue={openReview}
+            />
+          )}
           {screen === "analyzing" && <AnalyzingScreen t={t} photo={photo} />}
-          {screen === "review" && extraction && <ReviewScreen locale={locale} t={t} extraction={extraction} setExtraction={setExtraction} photo={photo} locationState={locationState} contact={contact} setContact={setContact} duplicate={issues.find((i) => i.id === extraction.duplicate_id)} different={different} setDifferent={setDifferent} onBack={() => navigate("capture")} onBackExisting={(i) => { backIssue(i.id); setSelectedId(i.id); navigate("issue"); }} onSubmit={submitReport} />}
+          {screen === "review" && extraction && <ReviewScreen locale={locale} t={t} extraction={extraction} setExtraction={setExtraction} photo={photo} locationState={location.status} contact={contact} setContact={setContact} duplicate={issues.find((i) => i.id === extraction.duplicate_id)} different={different} setDifferent={setDifferent} onBack={() => navigate("capture")} onBackExisting={(i) => { backIssue(i.id); setSelectedId(i.id); navigate("issue"); }} onSubmit={submitReport} />}
           {screen === "success" && <ResultScreen icon="sent" eyebrow={t.submittedEyebrow} title={t.submitted} body={t.submittedHelp} primary={t.viewReport} onPrimary={() => navigate("issue")} />}
           {screen === "contest" && <ContestScreen t={t} photo={contestPhoto} fileRef={contestRef} onFile={(f) => readFile(f, true)} onBack={() => navigate("issue")} onSubmit={contestFix} />}
           {screen === "confirmed" && <ResultScreen icon="confirmed" eyebrow={t.confirmedEyebrow} title={t.confirmedTitle} body={t.confirmedHelp} primary={t.makeCard} onPrimary={() => navigate("story")} secondary={t.viewReport} onSecondary={() => navigate("issue")} />}
@@ -483,6 +513,21 @@ export function FixoApp() {
         </div>
       )}
       <LanguageSheet open={languageOpen} locale={locale} t={t} onClose={() => setLanguageOpen(false)} onChange={setLocale} />
+      <PinSheet open={pinOpen} t={t} center={location.point} onClose={() => setPinOpen(false)} onConfirm={confirmPin} />
+      <OverlaySheet open={rationaleOpen} title={t.locationAllow} onClose={() => setRationaleOpen(false)} closeLabel={t.close} titleClassName="type-heading-sm">
+        <p className="type-body-md">{t.locationWhy}</p>
+        <div className="sheet-actions">
+          <Button block color="primary" size="large" className="primary-button" onClick={() => { setRationaleOpen(false); resolveLocation(); }}>{t.locationAllow}</Button>
+          <Button block fill="outline" size="large" className="secondary-button" onClick={() => { setRationaleOpen(false); setPinOpen(true); }}>{t.locationSetManually}</Button>
+        </div>
+      </OverlaySheet>
+      <OverlaySheet open={discardOpen} title={t.discardTitle} onClose={() => setDiscardOpen(false)} closeLabel={t.close} titleClassName="type-heading-sm">
+        <p className="type-body-md">{t.discardHelp}</p>
+        <div className="sheet-actions">
+          <Button block fill="outline" size="large" className="secondary-button danger" onClick={discardReport}>{t.discardConfirm}</Button>
+          <Button block color="primary" size="large" className="primary-button" onClick={() => setDiscardOpen(false)}>{t.discardKeep}</Button>
+        </div>
+      </OverlaySheet>
       <ProfileSheet
         open={profileOpen}
         t={t}
@@ -518,10 +563,6 @@ function IssueCard({ issue, locale, t, selected, onClick }: { issue: Issue; loca
   );
 }
 
-function TopBar({ title, onBack, action }: { title: string; onBack: () => void; action?: React.ReactNode }) {
-  return <header className="top-bar"><NavBar backArrow={<ArrowLeft size={21} />} onBack={onBack} right={action}>{title}</NavBar></header>;
-}
-
 function IssueDetail({ issue, locale, t, backed, onBack, onBackIssue, onConfirm, onContest }: { issue: Issue; locale: Locale; t: ReturnType<typeof getCopy>; backed: boolean; onBack: () => void; onBackIssue: () => void; onConfirm: () => void; onContest: () => void }) {
   return <div className="full-page issue-detail">
     <TopBar title={issue.id} onBack={onBack} action={<StatusPill issue={issue} locale={locale} />} />
@@ -543,16 +584,6 @@ function IssueDetail({ issue, locale, t, backed, onBack, onBackIssue, onConfirm,
       {issue.status === "awaiting_confirmation" && <section className="confirm-card"><div className="confirmation-seal"><ShieldCheck size={24} /></div><p className="eyebrow">{t.statusCheckFix}</p><h2 className="type-heading-md">{t.awaiting}</h2><p className="type-body-md">{t.inspect}</p><Button block color="success" size="large" className="primary-button green" onClick={onConfirm}><Check size={18} />{t.fixed}</Button><Button block fill="outline" size="large" className="secondary-button danger" onClick={onContest}><X size={18} />{t.broken}</Button></section>}
       {issue.status === "confirmed" && <p className="type-body-md">{t.confirmedByResidents}</p>}
     </article>
-  </div>;
-}
-
-function CaptureScreen({ t, photo, locationState, fileRef, onBack, onFile, onDemoPhoto, onLocation, onContinue }: { locale: Locale; t: ReturnType<typeof getCopy>; photo: string | null; locationState: string; fileRef: React.RefObject<HTMLInputElement | null>; onBack: () => void; onFile: (f?: File) => void; onDemoPhoto: () => void; onLocation: () => void; onContinue: () => void }) {
-  return <div className="full-page capture-page"><TopBar title={t.reportProblem} onBack={onBack} /><div className="capture-copy"><p className="eyebrow">{t.captureStep}</p><h1 className="type-heading-lg">{t.capture}</h1><p className="type-body-md">{t.captureHelp}</p></div>
-    <input ref={fileRef} hidden type="file" accept="image/*" capture="environment" onChange={(e) => onFile(e.target.files?.[0])} />
-    <button className={`camera-stage ${photo ? "has-photo" : ""}`} onClick={onDemoPhoto}>{photo ? <><img src={photo} alt={t.photoAlt} /><span><RotateCcw size={16} />{t.retakePhoto}</span></> : <><div className="camera-lens"><Camera size={34} /></div><strong className="type-label-md">{t.camera}</strong><span className="type-caption">{t.demoPhotoHint}</span></>}</button>
-    <button className="gallery-button" onClick={() => fileRef.current?.click()}><ImagePlus size={17} />{t.upload}</button>
-    <div className="capture-location"><button onClick={onLocation}><LocateFixed size={18} />{locationState === "loading" ? t.locating : t.location}</button>{locationState === "ready" && <span className="location-ok"><Check size={14} />{t.locationReady}</span>}{locationState === "denied" && <span className="location-warn"><CircleAlert size={14} />{t.permission}</span>}</div>
-    <div className="sticky-action"><Button block color="primary" size="large" className="primary-button" disabled={!photo} onClick={onContinue}>{t.continue}<ArrowRight size={18} /></Button></div>
   </div>;
 }
 
