@@ -10,7 +10,7 @@
 
 **Tokens:** `marker.size`, `marker.sizeSelected`, `marker.radius`, `marker.border`, `marker.labelWidth`, `elevation.1–2`, `surface.primary` (card ring), `type.caption`
 
-**Sizing:** Default media 56px; selected media 80px. Outer ring uses `marker.border` in `surface.primary`. Whole control is the hit target and stays ≥44px. Label is caption, two-line clamp, width `marker.labelWidth`.
+**Sizing:** Default media 24px with 4px stroke; selected media 48px with 8px stroke. Corner radius 12px on the photo. Outer ring uses `surface.primary`. Whole control is the hit target and stays ≥44px.
 
 **Responsive:** Same sizes on all viewports. Do not shrink below `--touch-min`.
 

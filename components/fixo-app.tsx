@@ -3,17 +3,20 @@
 /* eslint-disable @next/next/no-img-element -- user-captured data URLs and local evidence require native img previews */
 
 import {
-  ArrowLeft, ArrowRight, Camera, Check, CircleAlert, Globe2,
-  ImagePlus, LocateFixed, MapPin, RotateCcw, ShieldCheck,
+  ArrowRight, Check, CircleAlert, Globe2,
+  ImagePlus, MapPin, ShieldCheck,
   Sparkles, Users, X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { Button, NavBar, Toast } from "antd-mobile";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Button, Toast } from "antd-mobile";
 import { formatCopy, getCopy, getStatusLabel, localizedField } from "@/lib/i18n";
 import { LOCALE_META, resolveInitialLocale, writeStoredLocale } from "@/lib/locale";
 import { seedIssues, WARD_CENTER } from "@/lib/seed";
+import { locateInWard } from "@/lib/geo";
 import { assetPath } from "@/lib/assets";
-import type { AIExtraction, Category, Issue, Locale } from "@/lib/types";
+import { LOCATION_ACCURACY_LIMIT_M } from "@/lib/config";
+import { clearDraft, readDraft, writeDraft } from "@/lib/draft";
+import type { AIExtraction, AnalysisStatus, Category, Issue, Locale, LocationFix, PhotoIssue } from "@/lib/types";
 import { StoryCard } from "./story-card";
 import { ProfileAvatar } from "./profile-avatar";
 import { ProfileSheet } from "./profile-sheet";
@@ -21,6 +24,10 @@ import { CategoryIcon } from "./category-icon";
 import { NearbyScreen, type NearbyScreenHandle } from "./nearby-screen";
 import { LanguageSheet } from "./language-sheet";
 import { BottomNavigation } from "./bottom-navigation";
+import { TopBar } from "./top-bar";
+import { CaptureScreen, type LocationAction } from "./capture-screen";
+import { PinSheet } from "./pin-sheet";
+import { OverlaySheet } from "./overlay-sheet";
 import { readStoredPhoneVerified, writeStoredPhoneVerified } from "@/lib/profile";
 
 type Screen = "nearby" | "mine" | "issue" | "capture" | "analyzing" | "review" | "success" | "contest" | "confirmed" | "story";
@@ -34,6 +41,16 @@ function isReportHistory(state: unknown) {
 
 const statusClass: Record<Issue["status"], string> = {
   reported: "slate", acknowledged: "slate", in_progress: "amber", awaiting_confirmation: "violet", confirmed: "green", contested: "red",
+};
+
+const idleLocation: LocationFix = { status: "prompt", point: null, accuracyM: null, blocked: false, manual: false };
+
+/** Step 2 stays editable when classification produces nothing usable. */
+const blankExtraction: AIExtraction = {
+  category: "Other",
+  title_en: "", title_hi: "", title_kn: "",
+  description_en: "", description_hi: "", description_kn: "",
+  severity: "medium", confidence: 0, needs_user_review: true,
 };
 
 const staticDemoExtraction: AIExtraction = {
@@ -87,7 +104,12 @@ export function FixoApp() {
   const [backed, setBacked] = useState<string[]>([]);
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
-  const [locationState, setLocationState] = useState<"idle" | "loading" | "ready" | "denied">("idle");
+  const [photoIssue, setPhotoIssue] = useState<PhotoIssue>("none");
+  const [analysis, setAnalysis] = useState<AnalysisStatus>("idle");
+  const [location, setLocation] = useState<LocationFix>(idleLocation);
+  const [pinOpen, setPinOpen] = useState(false);
+  const [rationaleOpen, setRationaleOpen] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
   const [offline, setOffline] = useState(false);
   const [extraction, setExtraction] = useState<AIExtraction | null>(null);
   const [contact, setContact] = useState("");
@@ -95,8 +117,9 @@ export function FixoApp() {
   const [contestPhoto, setContestPhoto] = useState<string | null>(null);
   const [hintReport, setHintReport] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
   const contestRef = useRef<HTMLInputElement>(null);
+  const analysisRun = useRef(0);
+  const advancing = useRef(false);
   const nearbyRef = useRef<NearbyScreenHandle>(null);
   const mineScrollRef = useRef<HTMLDivElement>(null);
   const lastHome = useRef<HomeScreen>("nearby");
@@ -107,6 +130,10 @@ export function FixoApp() {
   useEffect(() => {
     setLocale(resolveInitialLocale());
     setPhoneVerified(readStoredPhoneVerified());
+    const draft = readDraft();
+    if (!draft) return;
+    if (draft.photo) { setPhoto(draft.photo); setPhotoBase64(draft.photo); }
+    if (draft.location) setLocation(draft.location);
   }, []);
 
   useEffect(() => {
@@ -187,13 +214,13 @@ export function FixoApp() {
   const openReport = () => {
     if (reportFlow.includes(screen) || openingReport.current) return;
     openingReport.current = true;
-    requestLocation();
+    void primeLocation();
     if (!isReportHistory(history.state)) history.pushState({ fixo: "report" }, "");
     setScreen("capture");
     window.setTimeout(() => { openingReport.current = false; }, 400);
   };
 
-  const closeReport = () => {
+  const leaveReport = () => {
     if (isReportHistory(history.state)) {
       history.back();
       return;
@@ -201,19 +228,55 @@ export function FixoApp() {
     goHome(lastHome.current);
   };
 
+  /** Ask before discarding only when there is something to lose (spec section 8). */
+  const closeReport = () => {
+    if (photo || location.manual) { setDiscardOpen(true); return; }
+    leaveReport();
+  };
+
+  const discardReport = () => {
+    setDiscardOpen(false);
+    resetReport();
+    leaveReport();
+  };
+
+  const resetReport = () => {
+    analysisRun.current += 1;
+    clearDraft();
+    setPhoto(null); setPhotoBase64(null); setPhotoIssue("none");
+    setAnalysis("idle"); setExtraction(null); setDifferent(false);
+    setLocation(idleLocation);
+  };
+
   const chooseIssue = (issue: Issue) => { setSelectedId(issue.id); navigate("issue"); };
 
   const readFile = (file?: File, contest = false) => {
     if (!file) return;
+    if (!file.type.startsWith("image/")) { Toast.show({ content: t.photoUnclear, position: "bottom" }); return; }
     if (file.size > 8 * 1024 * 1024) { Toast.show({ content: t.photoTooLarge, position: "bottom" }); return; }
     const reader = new FileReader();
     reader.onload = () => {
       const url = String(reader.result);
       if (contest) { setContestPhoto(url); return; }
-      setPhoto(url); setPhotoBase64(url);
-      requestLocation();
+      /* Decode first: an image we cannot render is not usable evidence. */
+      const probe = new Image();
+      probe.onload = () => {
+        setPhoto(url); setPhotoBase64(url);
+        setPhotoIssue(Math.min(probe.naturalWidth, probe.naturalHeight) < 480 ? "unclear" : "none");
+        void runAnalysis(url);
+      };
+      probe.onerror = () => Toast.show({ content: t.photoUnclear, position: "bottom" });
+      probe.src = url;
     };
     reader.readAsDataURL(file);
+  };
+
+  const removePhoto = () => {
+    analysisRun.current += 1;
+    setPhoto(null); setPhotoBase64(null); setPhotoIssue("none");
+    setAnalysis("idle"); setExtraction(null);
+    clearDraft();
+    Toast.show({ content: t.photoRemoved, position: "bottom" });
   };
 
   const loadDemoPhoto = async () => {
@@ -222,29 +285,97 @@ export function FixoApp() {
     readFile(new File([blob], "demo-pothole.jpg", { type: "image/jpeg" }));
   };
 
-  const requestLocation = () => {
-    if (!navigator.geolocation) { setLocationState("denied"); return; }
-    setLocationState("loading");
-    navigator.geolocation.getCurrentPosition(() => setLocationState("ready"), () => setLocationState("denied"), { timeout: 5000, enableHighAccuracy: true });
+  const resolveLocation = () => {
+    if (!navigator.geolocation) { setLocation((fix) => ({ ...fix, status: "unavailable", blocked: true })); return; }
+    setLocation((fix) => ({ ...fix, status: "finding" }));
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const accuracyM = position.coords.accuracy;
+        setLocation({
+          status: accuracyM > LOCATION_ACCURACY_LIMIT_M ? "approximate" : "ready",
+          point: locateInWard(position.coords.latitude, position.coords.longitude),
+          accuracyM,
+          blocked: false,
+          manual: false,
+        });
+      },
+      (error) => setLocation((fix) => ({ ...fix, status: "unavailable", blocked: error.code === error.PERMISSION_DENIED })),
+      { timeout: 8000, enableHighAccuracy: true },
+    );
   };
 
-  const analyze = async () => {
-    if (!photoBase64) return;
-    navigate("analyzing");
+  /**
+   * Resolve quietly when permission already exists; otherwise leave the row on
+   * 'Add location' rather than firing an unexplained prompt (spec section 7).
+   */
+  const primeLocation = async () => {
+    if (location.status !== "prompt") return;
+    try {
+      const permission = await navigator.permissions?.query({ name: "geolocation" as PermissionName });
+      if (permission?.state === "granted") { resolveLocation(); return; }
+      if (permission?.state === "denied") setLocation((fix) => ({ ...fix, blocked: true }));
+    } catch {
+      /* Permissions API unavailable — wait for the resident to ask. */
+    }
+  };
+
+  const onLocationAction = (action: LocationAction) => {
+    if (action === "change" || action === "adjust") { setPinOpen(true); return; }
+    if (action === "retry" && location.blocked) { setPinOpen(true); return; }
+    if (action === "use" && location.blocked) { setPinOpen(true); return; }
+    if (action === "use") { setRationaleOpen(true); return; }
+    resolveLocation();
+  };
+
+  const confirmPin = (point: [number, number]) => {
+    setPinOpen(false);
+    setLocation((fix) => ({ ...fix, status: "ready", point, accuracyM: null, manual: true }));
+  };
+
+  /** Upload and classify in the background as soon as a photo exists (spec section 7). */
+  const runAnalysis = async (image: string) => {
+    const run = ++analysisRun.current;
+    setAnalysis("running");
+    setPhotoIssue((issue) => (issue === "uploadFailed" ? "none" : issue));
+
     if (process.env.NEXT_PUBLIC_STATIC_DEMO === "true") {
-      setExtraction(staticDemoExtraction);
-      window.setTimeout(() => navigate("review"), 900);
+      window.setTimeout(() => {
+        if (analysisRun.current !== run) return;
+        setExtraction(staticDemoExtraction);
+        setAnalysis("done");
+      }, 900);
       return;
     }
+
     try {
-      const response = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: photoBase64 }) });
+      const response = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image }) });
       if (!response.ok) throw new Error("analysis failed");
       const result = await response.json() as AIExtraction;
-      setExtraction(result);
+      if (analysisRun.current !== run) return;
+      /* A reply we cannot use is not an upload failure — step 2 opens blank and editable. */
+      setExtraction(result?.category ? result : blankExtraction);
+      setAnalysis("done");
     } catch {
-      setExtraction({ category: "Roads", title_en: "Road surface damage", title_hi: "सड़क की सतह क्षतिग्रस्त", title_kn: "ರಸ್ತೆ ಮೇಲ್ಮೈ ಹಾನಿ", description_en: "A damaged patch of road needs a check.", description_hi: "सड़क के क्षतिग्रस्त हिस्से की जाँच आवश्यक है।", description_kn: "ರಸ್ತೆಯ ಹಾನಿಯಾದ ಭಾಗವನ್ನು ಪರಿಶೀಲಿಸಬೇಕು.", severity: "medium", confidence: 0.42, needs_user_review: true, duplicate_id: "FX-14028" });
+      if (analysisRun.current !== run) return;
+      setAnalysis("failed");
+      setPhotoIssue("uploadFailed");
     }
-    window.setTimeout(() => navigate("review"), 500);
+  };
+
+  const retryAnalysis = () => {
+    if (!photoBase64) return;
+    void runAnalysis(photoBase64);
+  };
+
+  const openReview = () => {
+    if (!photo || !photoBase64) return;
+    if (location.status !== "ready" && location.status !== "approximate") return;
+    if (advancing.current) return;
+    advancing.current = true;
+    window.setTimeout(() => { advancing.current = false; }, 500);
+    if (analysis === "done" && extraction) { navigate("review"); return; }
+    if (analysis !== "running") void runAnalysis(photoBase64);
+    navigate("analyzing");
   };
 
   const backIssue = (id: string) => {
@@ -257,16 +388,19 @@ export function FixoApp() {
   const submitReport = () => {
     if (!extraction) return;
     const now = new Date().toISOString();
+    const reportPoint = location.point ?? [WARD_CENTER[0] - 0.0004, WARD_CENTER[1] - 0.0007];
     const newIssue: Issue = {
       id: `FX-14${40 + issues.length}`, category: extraction.category,       titleEn: extraction.title_en, titleHi: extraction.title_hi, titleKn: extraction.title_kn || extraction.title_en,
-      descriptionEn: extraction.description_en, descriptionHi: extraction.description_hi, descriptionKn: extraction.description_kn || extraction.description_en, address: "Near your current location · Jayanagar", lat: WARD_CENTER[0] - 0.0004, lng: WARD_CENTER[1] - 0.0007,
+      descriptionEn: extraction.description_en, descriptionHi: extraction.description_hi, descriptionKn: extraction.description_kn || extraction.description_en, address: `Near your current location · ${t.locationArea}`, lat: reportPoint[0], lng: reportPoint[1],
       image: photo ?? assetPath("/images/pothole-ambedkar.jpg"), supporters: 1, aliases: ["You"], status: "reported", severity: extraction.severity,
       reportedAgoEn: "Just now", reportedAgoHi: "अभी", reportedAgoKn: "ಈಗಷ್ಟೇ", reportedAt: now, updatedAt: now,
       departmentEn: "Finding the right team", departmentHi: "सही टीम ढूँढ रहे हैं", departmentKn: "ಸರಿಯಾದ ತಂಡ ಹುಡುಕುತ್ತಿದ್ದೇವೆ", roleEn: "Ward control room", roleHi: "वार्ड नियंत्रण कक्ष", roleKn: "ವಾರ್ಡ್ ನಿಯಂತ್ರಣ ಕೋಣೆ",
       escalationEn: "Ward office · 1800-14-0014", escalationHi: "वार्ड कार्यालय · 1800-14-0014", escalationKn: "ವಾರ್ಡ್ ಕಚೇರಿ · 1800-14-0014", expectedEn: "Update after routing", expectedHi: "रूटिंग के बाद अपडेट", expectedKn: "ರೂಟಿಂಗ್ ನಂತರ ಅಪ್‌ಡೇಟ್", mine: true, routingPending: true, trust: [],
       timeline: [{ status: "reported", labelEn: "Submitted", labelHi: "जमा हुई", labelKn: "ಸಲ್ಲಿಸಲಾಗಿದೆ", date: "Just now", noteEn: "Photo and approximate location added", noteHi: "फोटो और अनुमानित जगह जोड़ी गई", noteKn: "ಫೋಟೋ ಮತ್ತು ಅಂದಾಜು ಸ್ಥಳ ಸೇರಿಸಲಾಗಿದೆ" }],
     };
-    setIssues((list) => [newIssue, ...list]); setSelectedId(newIssue.id); navigate("success");
+    setIssues((list) => [newIssue, ...list]); setSelectedId(newIssue.id);
+    clearDraft();
+    navigate("success");
   };
 
   const confirmFix = () => {

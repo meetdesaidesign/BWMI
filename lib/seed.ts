@@ -21,7 +21,7 @@ const rawSeedIssues: Issue[] = [
   {
     id: "FX-14028", category: "Roads", titleEn: "Deep pothole at 36th Cross turn", titleHi: "36वीं क्रॉस मोड़ पर गहरा गड्ढा", titleKn: "36ನೇ ಕ್ರಾಸ್ ತಿರುವಿನಲ್ಲಿ ಆಳವಾದ ಗುಂಡಿ",
     descriptionEn: "Large road cavity near the bus turn; risky for two-wheelers after rain.", descriptionHi: "बस मोड़ के पास बड़ा गड्ढा; बारिश के बाद दोपहिया वाहनों के लिए खतरनाक।", descriptionKn: "ಬಸ್ ತಿರುವಿನ ಬಳಿ ದೊಡ್ಡ ಗುಂಡಿ; ಮಳೆಯ ನಂತರ ದ್ವಿಚಕ್ರ ವಾಹನಗಳಿಗೆ ಅಪಾಯ.",
-    address: "36th Cross, 4th Block", lat: 12.9254, lng: 77.5838, image: "/images/pothole-ambedkar.jpg", supporters: 31, aliases: ["Riya M.", "A neighbour", "Kabir S."], status: "in_progress", severity: "high",
+    address: "36th Cross, 4th Block", lat: 12.9254, lng: 77.5838, image: "/images/issue-roads-pothole-01.jpg", supporters: 31, aliases: ["Riya M.", "A neighbour", "Kabir S."], status: "in_progress", severity: "high",
     reportedAgoEn: "10 days ago", reportedAgoHi: "10 दिन पहले", reportedAgoKn: "10 ದಿನಗಳ ಹಿಂದೆ", reportedAt: "2026-08-18T08:42:00+05:30", updatedAt: "2026-08-27T10:20:00+05:30",
     departmentEn: "Roads Engineering Department", departmentHi: "सड़क अभियांत्रिकी विभाग", departmentKn: "ರಸ್ತೆ ಎಂಜಿನಿಯರಿಂಗ್ ಇಲಾಖೆ",
     roleEn: "Assistant Executive Engineer", roleHi: "सहायक कार्यपालक अभियंता", roleKn: "ಸಹಾಯಕ ಕಾರ್ಯನಿರ್ವಾಹಕ ಎಂಜಿನಿಯರ್",
@@ -31,7 +31,7 @@ const rawSeedIssues: Issue[] = [
   {
     id: "FX-14019", category: "Waste", titleEn: "Garbage piling beside 4th Block market", titleHi: "चौथा ब्लॉक बाज़ार के पास कचरे का ढेर", titleKn: "4ನೇ ಬ್ಲಾಕ್ ಮಾರುಕಟ್ಟೆ ಬಳಿ ತ್ಯಾಜ್ಯ ರಾಶಿ",
     descriptionEn: "Mixed waste has blocked part of the footpath.", descriptionHi: "मिश्रित कचरे ने फुटपाथ का हिस्सा रोक दिया है।", descriptionKn: "ಮಿಶ್ರ ತ್ಯಾಜ್ಯವು ಕಾಲುದಾರಿಯ ಭಾಗವನ್ನು ತಡೆದಿದೆ.",
-    address: "4th Block Complex", lat: 12.9271, lng: 77.5811, image: "/images/waste-sabzi-mandi.jpg", supporters: 9, aliases: ["A neighbour", "Meera"], status: "contested", severity: "medium",
+    address: "4th Block Complex", lat: 12.9271, lng: 77.5811, image: "/images/issue-waste-roadside-01.jpg", supporters: 9, aliases: ["A neighbour", "Meera"], status: "contested", severity: "medium",
     reportedAgoEn: "6 days ago", reportedAgoHi: "6 दिन पहले", reportedAgoKn: "6 ದಿನಗಳ ಹಿಂದೆ", reportedAt: "2026-08-21T09:10:00+05:30", updatedAt: "2026-08-24T08:12:00+05:30",
     departmentEn: "Solid Waste Management", departmentHi: "ठोस अपशिष्ट प्रबंधन", departmentKn: "ಘನ ತ್ಯಾಜ್ಯ ನಿರ್ವಹಣೆ",
     roleEn: "Sanitary Inspector", roleHi: "स्वच्छता निरीक्षक", roleKn: "ನೈರ್ಮಲ್ಯ ನಿರೀಕ್ಷಕ",
@@ -42,7 +42,7 @@ const rawSeedIssues: Issue[] = [
   {
     id: "FX-14033", category: "Drainage", titleEn: "Clogged open drain near 9th Main", titleHi: "9वीं मेन के पास भरी नाली", titleKn: "9ನೇ ಮೇನ್ ಬಳಿ ತುಂಬಿದ ತೆರೆದ ಚರಂಡಿ",
     descriptionEn: "The open drain is choked with floating waste on the school route.", descriptionHi: "स्कूल जाने वाले रास्ते पर खुली नाली कचरे से जाम है।", descriptionKn: "ಶಾಲೆ ದಾರಿಯಲ್ಲಿ ತೆರೆದ ಚರಂಡಿ ತ್ಯಾಜ್ಯದಿಂದ ತುಂಬಿದೆ.",
-    address: "9th Main, 4th T Block", lat: 12.9232, lng: 77.5857, image: "/images/drain-kabir-basti.jpg", supporters: 4, aliases: ["A neighbour"], status: "acknowledged", severity: "high",
+    address: "9th Main, 4th T Block", lat: 12.9232, lng: 77.5857, image: "/images/issue-drain-open-01.jpg", supporters: 4, aliases: ["A neighbour"], status: "acknowledged", severity: "high",
     reportedAgoEn: "2 days ago", reportedAgoHi: "2 दिन पहले", reportedAgoKn: "2 ದಿನಗಳ ಹಿಂದೆ", reportedAt: "2026-08-25T07:40:00+05:30", updatedAt: "2026-08-25T11:00:00+05:30",
     departmentEn: "Municipal Engineering", departmentHi: "नगर अभियांत्रिकी", departmentKn: "ನಗರ ಎಂಜಿನಿಯರಿಂಗ್",
     roleEn: "Ward Engineer", roleHi: "वार्ड अभियंता", roleKn: "ವಾರ್ಡ್ ಎಂಜಿನಿಯರ್",
@@ -63,7 +63,7 @@ const rawSeedIssues: Issue[] = [
   {
     id: "FX-14037", category: "Water", titleEn: "Leaking pipe outside ration shop", titleHi: "राशन दुकान के बाहर पाइप लीक", titleKn: "ರೇಷನ್ ಅಂಗಡಿ ಹೊರಗೆ ಪೈಪ್ ಸೋರಿಕೆ",
     descriptionEn: "Clean water has been running into the street since morning.", descriptionHi: "सुबह से साफ पानी सड़क पर बह रहा है।", descriptionKn: "ಬೆಳಿಗ್ಗಿನಿಂದ ಶುದ್ಧ ನೀರು ರಸ್ತೆಗೆ ಸೋರುತ್ತಿದೆ.",
-    address: "32nd Cross", lat: 12.9211, lng: 77.5818, image: "/images/water.svg", supporters: 7, aliases: ["A neighbour"], status: "reported", severity: "medium",
+    address: "32nd Cross", lat: 12.9211, lng: 77.5818, image: "/images/issue-roads-pothole-04.jpg", supporters: 7, aliases: ["A neighbour"], status: "reported", severity: "medium",
     reportedAgoEn: "4 hours ago", reportedAgoHi: "4 घंटे पहले", reportedAgoKn: "4 ಗಂಟೆಗಳ ಹಿಂದೆ", reportedAt: "2026-08-27T10:40:00+05:30", updatedAt: "2026-08-27T10:40:00+05:30",
     departmentEn: "Water supply maintenance", departmentHi: "जल आपूर्ति रखरखाव", departmentKn: "ನೀರು ಸರಬರಾಜು ನಿರ್ವಹಣೆ",
     roleEn: "Utility Engineer", roleHi: "उपयोगिता अभियंता", roleKn: "ಯುಟಿಲಿಟಿ ಎಂಜಿನಿಯರ್",
@@ -73,7 +73,7 @@ const rawSeedIssues: Issue[] = [
   {
     id: "FX-14025", category: "Waste", titleEn: "Uncollected waste dumped near metro gate", titleHi: "मेट्रो गेट के पास कचरे का ढेर", titleKn: "ಮೆಟ್ರೋ ಗೇಟ್ ಬಳಿ ಎತ್ತದ ತ್ಯಾಜ್ಯ",
     descriptionEn: "Household waste has been dumped on the street beside the collection point.", descriptionHi: "संग्रह बिंदु के पास सड़क पर घरेलू कचरा डाला गया है।", descriptionKn: "ಸಂಗ್ರಹ ಸ್ಥಳದ ಬಳಿ ರಸ್ತೆಯಲ್ಲಿ ಮನೆ ತ್ಯಾಜ್ಯ ಹಾಕಲಾಗಿದೆ.",
-    address: "Jayanagar Metro Gate 2", lat: 12.9255, lng: 77.5802, image: "/images/waste-metro-gate.jpg", supporters: 18, aliases: ["Zoya", "A neighbour"], status: "awaiting_confirmation", severity: "medium",
+    address: "Jayanagar Metro Gate 2", lat: 12.9255, lng: 77.5802, image: "/images/issue-waste-sidewalk-01.jpg", supporters: 18, aliases: ["Zoya", "A neighbour"], status: "awaiting_confirmation", severity: "medium",
     reportedAgoEn: "8 days ago", reportedAgoHi: "8 दिन पहले", reportedAgoKn: "8 ದಿನಗಳ ಹಿಂದೆ", reportedAt: "2026-08-19T11:20:00+05:30", updatedAt: "2026-08-27T11:20:00+05:30",
     departmentEn: "Solid Waste Management", departmentHi: "ठोस अपशिष्ट प्रबंधन", departmentKn: "ಘನ ತ್ಯಾಜ್ಯ ನಿರ್ವಹಣೆ",
     roleEn: "Sanitary Inspector", roleHi: "स्वच्छता निरीक्षक", roleKn: "ನೈರ್ಮಲ್ಯ ನಿರೀಕ್ಷಕ",
@@ -84,7 +84,7 @@ const rawSeedIssues: Issue[] = [
   {
     id: "FX-14041", category: "Roads", titleEn: "Cracked speed breaker on 36th Cross", titleHi: "36वीं क्रॉस पर टूटा स्पीड ब्रेकर", titleKn: "36ನೇ ಕ್ರಾಸ್‌ನಲ್ಲಿ ಒಡೆದ ಸ್ಪೀಡ್ ಬ್ರೇಕರ್",
     descriptionEn: "The speed breaker has split and the edge is sharp for two-wheelers.", descriptionHi: "स्पीड ब्रेकर टूट गया है और किनारा दोपहिया वाहनों के लिए तेज है।", descriptionKn: "ಸ್ಪೀಡ್ ಬ್ರೇಕರ್ ಒಡೆದಿದೆ ಮತ್ತು ಅಂಚು ದ್ವಿಚಕ್ರ ವಾಹನಗಳಿಗೆ ತೀಕ್ಷ್ಣವಾಗಿದೆ.",
-    address: "36th Cross, near bus stop", lat: 12.92555, lng: 77.58395, image: "/images/pothole-ambedkar.jpg", supporters: 11, aliases: ["A neighbour"], status: "reported", severity: "medium",
+    address: "36th Cross, near bus stop", lat: 12.92555, lng: 77.58395, image: "/images/issue-roads-pothole-02.jpg", supporters: 11, aliases: ["A neighbour"], status: "reported", severity: "medium",
     reportedAgoEn: "1 day ago", reportedAgoHi: "1 दिन पहले", reportedAgoKn: "1 ದಿನದ ಹಿಂದೆ", reportedAt: "2026-08-26T09:15:00+05:30", updatedAt: "2026-08-26T09:15:00+05:30",
     departmentEn: "Roads Engineering Department", departmentHi: "सड़क अभियांत्रिकी विभाग", departmentKn: "ರಸ್ತೆ ಎಂಜಿನಿಯರಿಂಗ್ ಇಲಾಖೆ",
     roleEn: "Assistant Executive Engineer", roleHi: "सहायक कार्यपालक अभियंता", roleKn: "ಸಹಾಯಕ ಕಾರ್ಯನಿರ್ವಾಹಕ ಎಂಜಿನಿಯರ್",
@@ -94,7 +94,7 @@ const rawSeedIssues: Issue[] = [
   {
     id: "FX-14042", category: "Roads", titleEn: "Loose manhole cover beside 36th Cross", titleHi: "36वीं क्रॉस के पास ढीला मैनहोल कवर", titleKn: "36ನೇ ಕ್ರಾಸ್ ಬಳಿ ಸಡಿಲ ಮ್ಯಾನ್‌ಹೋಲ್ ಕವರ್",
     descriptionEn: "The cover shifts when buses pass and needs to be seated.", descriptionHi: "बस गुजरने पर कवर हिलता है।", descriptionKn: "ಬಸ್ ಹೋದಾಗ ಕವರ್ ಜರುಗುತ್ತದೆ.",
-    address: "36th Cross junction", lat: 12.92528, lng: 77.58368, image: "/images/pothole-ambedkar.jpg", supporters: 8, aliases: ["Kabir S."], status: "acknowledged", severity: "high",
+    address: "36th Cross junction", lat: 12.92528, lng: 77.58368, image: "/images/issue-roads-pothole-03.jpg", supporters: 8, aliases: ["Kabir S."], status: "acknowledged", severity: "high",
     reportedAgoEn: "3 days ago", reportedAgoHi: "3 दिन पहले", reportedAgoKn: "3 ದಿನಗಳ ಹಿಂದೆ", reportedAt: "2026-08-24T16:40:00+05:30", updatedAt: "2026-08-25T10:00:00+05:30",
     departmentEn: "Roads Engineering Department", departmentHi: "सड़क अभियांत्रिकी विभाग", departmentKn: "ರಸ್ತೆ ಎಂಜಿನಿಯರಿಂಗ್ ಇಲಾಖೆ",
     roleEn: "Assistant Executive Engineer", roleHi: "सहायक कार्यपालक अभियंता", roleKn: "ಸಹಾಯಕ ಕಾರ್ಯನಿರ್ವಾಹಕ ಎಂಜಿನಿಯರ್",
@@ -103,16 +103,46 @@ const rawSeedIssues: Issue[] = [
   },
 ];
 
-const categoryImage: Record<Issue["category"], string> = {
-  Roads: "/images/pothole.svg",
-  Waste: "/images/waste.svg",
-  Water: "/images/water.svg",
-  Lighting: "/images/light.svg",
-  Drainage: "/images/drain.svg",
-  Traffic: "/images/pothole.svg",
-  Parks: "/images/light.svg",
-  Other: "/images/pothole.svg",
+const issuePhotos: Record<Issue["category"], string[]> = {
+  Roads: [
+    "/images/issue-roads-pothole-01.jpg",
+    "/images/issue-roads-pothole-02.jpg",
+    "/images/issue-roads-pothole-03.jpg",
+    "/images/issue-roads-pothole-04.jpg",
+    "/images/issue-roads-pothole-05.jpg",
+    "/images/issue-roads-pothole-06.jpg",
+    "/images/issue-roads-pothole-07.jpg",
+    "/images/issue-roads-pothole-08.jpg",
+  ],
+  Waste: [
+    "/images/issue-waste-roadside-01.jpg",
+    "/images/issue-waste-sidewalk-01.jpg",
+  ],
+  Water: [
+    "/images/issue-roads-pothole-04.jpg",
+    "/images/issue-roads-pothole-08.jpg",
+  ],
+  Lighting: ["/images/light-community-park.jpg"],
+  Drainage: [
+    "/images/issue-drain-open-01.jpg",
+    "/images/issue-roads-pothole-02.jpg",
+  ],
+  Traffic: [
+    "/images/issue-roads-pothole-05.jpg",
+    "/images/issue-roads-pothole-07.jpg",
+  ],
+  Parks: [
+    "/images/issue-parks-tree-01.jpg",
+    "/images/issue-parks-tree-02.jpg",
+  ],
+  Other: ["/images/issue-roads-pothole-06.jpg"],
 };
+
+function imageFor(category: Issue["category"], id: string) {
+  const photos = issuePhotos[category];
+  const n = Number.parseInt(id.replace(/\D/g, ""), 10) || 0;
+  return photos[n % photos.length];
+}
 
 const teams: Record<Issue["category"], Pick<Issue, "departmentEn" | "departmentHi" | "departmentKn" | "roleEn" | "roleHi" | "roleKn" | "escalationEn" | "escalationHi" | "escalationKn">> = {
   Roads: {
@@ -231,7 +261,7 @@ const dummyIssues: DummyIssue[] = [
 function fromDummy(issue: DummyIssue): Issue {
   return {
     ...issue,
-    image: categoryImage[issue.category],
+    image: imageFor(issue.category, issue.id),
     aliases: ["A neighbour"],
     ...teams[issue.category],
     trust: [],

@@ -322,14 +322,8 @@ p { text-wrap: pretty; }
 }
 
 .leaflet-container {
-  background: #F4F5F7;
+  background: #fbf8f3;
   font-family: var(--font-sans);
-}
-.ward-map:not(:has(.leaflet-google-mutant)) .leaflet-tile-pane {
-  filter: grayscale(0.82) contrast(0.92) brightness(1.1);
-}
-.leaflet-google-mutant {
-  pointer-events: none;
 }
 .leaflet-bottom {
   bottom: calc(var(--sheet-peek, 84px) + var(--nav-clearance, 0px) + var(--space-2));
@@ -371,33 +365,54 @@ p { text-wrap: pretty; }
   background: none !important;
   border: 0 !important;
   overflow: visible !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
 }
-.civic-marker,
+.civic-marker {
+  display: grid;
+  place-items: center;
+  flex: none;
+  box-sizing: content-box;
+  overflow: hidden;
+  padding: 0;
+  background: var(--surface-secondary);
+  border: var(--marker-border) solid var(--surface-primary);
+  border-radius: calc(var(--marker-radius) + var(--marker-border));
+  box-shadow: var(--elevation-1);
+  pointer-events: auto;
+}
+.civic-marker.is-selected {
+  border-width: var(--marker-border-selected);
+  border-radius: calc(var(--marker-radius) + var(--marker-border-selected));
+  box-shadow: var(--elevation-2);
+  transition: border-width var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard);
+}
+.civic-marker img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+  border-radius: var(--marker-radius);
+}
+.civic-marker svg {
+  display: block;
+  margin: auto;
+}
 .civic-cluster {
   display: grid;
   place-items: center;
   border: 0;
   padding: 0;
-  color: #fff;
-  background: var(--marker-fill, var(--action-primary));
+  color: var(--text-on-brand);
+  background: var(--surface-brand-strong);
   border-radius: var(--radius-full);
-  box-shadow: var(--elevation-1);
+  box-shadow: 0 0 0 2px var(--surface-primary), var(--elevation-1);
   pointer-events: auto;
-}
-.civic-marker svg,
-.civic-cluster {
   font-variant-numeric: tabular-nums;
   font-weight: var(--font-weight-bold);
   font-size: var(--type-label-md-size);
-}
-.civic-marker.is-selected {
-  box-shadow: 0 0 0 3px var(--surface-primary), var(--elevation-2);
-  transform: scale(1);
-  transition: transform var(--motion-fast) var(--ease-standard);
-}
-.civic-cluster {
-  background: var(--surface-brand-strong);
-  color: var(--text-on-brand);
 }
 
 .here-anchor {
@@ -2272,36 +2287,24 @@ p { text-wrap: pretty; }
 }
 
 @media (max-width: 599px) {
+  html, body { background: var(--surface-canvas); }
   .demo-stage {
-    --demo-stage-padding: 0;
-    --demo-name-size: clamp(52px, 14vw, 60px);
-    --demo-tagline-size: clamp(30px, 8vw, 34px);
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: flex-start;
-    gap: var(--space-6);
-    padding: var(--space-6) 0 0;
+    display: block;
+    min-height: 100dvh;
+    padding: 0;
+    background: var(--surface-canvas);
+    background-image: none;
   }
-  .demo-note {
-    padding-inline: var(--space-6);
-  }
-  .demo-prompt { display: none; }
+  .demo-note { display: none; }
   .phone-shell {
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 0;
-    min-height: 0;
     width: 100%;
-    height: auto;
+    height: 100dvh;
     margin-inline: 0;
-    border-radius: var(--demo-frame-radius) var(--demo-frame-radius) 0 0;
+    border-radius: 0;
     box-shadow: none;
   }
   .phone-shell .app-root {
-    flex: 1 1 auto;
-    min-height: 0;
-    height: auto;
+    height: 100%;
   }
 }
 

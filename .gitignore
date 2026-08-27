@@ -4,3 +4,6 @@ node_modules/
 *.log
 *.tsbuildinfo
 .DS_Store
+.tmp-verify/
+public/images/_incoming/
+public/images/_preview/
