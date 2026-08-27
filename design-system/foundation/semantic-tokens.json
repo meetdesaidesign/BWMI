@@ -54,7 +54,7 @@
     "scrimStrong": "rgba(17, 24, 39, 0.60)"
   },
   "focus": {
-    "ring": "rgba(23, 71, 209, 0.28)",
+    "ring": "rgba(115, 19, 245, 0.28)",
     "offset": "2px"
   }
 }

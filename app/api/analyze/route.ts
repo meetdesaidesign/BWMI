@@ -29,7 +29,7 @@ const demoFallback = {
   severity: "high" as const,
   confidence: 0.86,
   needs_user_review: false,
-  duplicate_id: "PK-14028",
+  duplicate_id: "FX-14028",
   demoFallback: true,
 };
 
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       input: [{
         role: "user",
         content: [
-          { type: "input_text", text: "Classify this civic issue photo for an Indian municipal reporting app. Be factual, avoid identifying people, and do not infer sensitive personal details. Write concise English and natural Hindi. Choose the closest allowed category. Set needs_user_review when the image is unclear. duplicate_id should be PK-14028 only for a visible pothole, otherwise null." },
+          { type: "input_text", text: "Classify this civic issue photo for an Indian municipal reporting app. Be factual, avoid identifying people, and do not infer sensitive personal details. Write concise English and natural Hindi. Choose the closest allowed category. Set needs_user_review when the image is unclear. duplicate_id should be FX-14028 only for a visible pothole, otherwise null." },
           { type: "input_image", image_url: body.image, detail: "low" },
         ],
       }],
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     const parsed = extractionSchema.parse(JSON.parse(response.output_text));
     return NextResponse.json(parsed);
   } catch (error) {
-    console.error("Pakka image analysis failed", error);
+    console.error("Fixo image analysis failed", error);
     return NextResponse.json({ error: "Unable to analyze this image" }, { status: 422 });
   }
 }

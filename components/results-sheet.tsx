@@ -2,33 +2,37 @@
 
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 
-export type SheetSnap = "collapsed" | "medium" | "expanded";
-
-const EXPANDED_PEEK = 80;
+export type SheetSnap = "collapsed" | "selected" | "half" | "expanded";
 
 function snapOffsets(height: number) {
-  const collapsedVisible = Math.min(208, Math.max(148, height * 0.42));
   return {
-    expanded: EXPANDED_PEEK,
-    medium: Math.max(height * 0.48, collapsedVisible + 24),
-    collapsed: Math.max(height - collapsedVisible, EXPANDED_PEEK + 48),
+    collapsed: Math.max(height - 84, 0),
+    selected: Math.max(height - 188, 0),
+    half: height * 0.55,
+    expanded: height * 0.28,
   };
 }
 
 export function ResultsSheet({
   snap,
   onSnap,
+  selected,
   header,
+  selectedCard,
   children,
   ariaLabel = "Nearby issues",
   handleLabel = "Resize results",
+  onPeek,
 }: {
   snap: SheetSnap;
   onSnap: (snap: SheetSnap) => void;
+  selected: boolean;
   header: ReactNode;
+  selectedCard?: ReactNode;
   children: ReactNode;
   ariaLabel?: string;
   handleLabel?: string;
+  onPeek?: (px: number) => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLElement>(null);
@@ -48,10 +52,20 @@ export function ResultsSheet({
 
   const points = snapOffsets(height || 640);
   const translateY = points[snap];
+  const allowed: SheetSnap[] = selected ? ["selected", "half", "expanded"] : ["collapsed", "half", "expanded"];
+
+  useEffect(() => {
+    onPeek?.(Math.max(0, (height || 640) - translateY));
+  }, [height, translateY, onPeek]);
 
   const nearest = (value: number): SheetSnap => {
-    const keys: SheetSnap[] = ["expanded", "medium", "collapsed"];
-    return keys.reduce((best, key) => (Math.abs(points[key] - value) < Math.abs(points[best] - value) ? key : best));
+    return allowed.reduce((best, key) => (Math.abs(points[key] - value) < Math.abs(points[best] - value) ? key : best));
+  };
+
+  const setPeek = (ty: number) => {
+    const host = rootRef.current;
+    if (!host) return;
+    host.style.setProperty("--sheet-peek", `${Math.max(0, (height || 640) - ty)}px`);
   };
 
   const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
@@ -62,26 +76,33 @@ export function ResultsSheet({
 
   const onPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
     if (!drag.current || !sheetRef.current) return;
-    const next = Math.min(points.collapsed, Math.max(points.expanded, drag.current.startTy + (event.clientY - drag.current.startY)));
+    const min = points.expanded;
+    const max = selected ? points.selected : points.collapsed;
+    const next = Math.min(max, Math.max(min, drag.current.startTy + (event.clientY - drag.current.startY)));
     sheetRef.current.style.transform = `translateY(${next}px)`;
+    setPeek(next);
   };
 
   const finish = (event: PointerEvent<HTMLButtonElement>) => {
     if (!drag.current) return;
-    const next = Math.min(points.collapsed, Math.max(points.expanded, drag.current.startTy + (event.clientY - drag.current.startY)));
+    const min = points.expanded;
+    const max = selected ? points.selected : points.collapsed;
+    const next = Math.min(max, Math.max(min, drag.current.startTy + (event.clientY - drag.current.startY)));
     const moved = Math.abs(event.clientY - drag.current.startY);
     drag.current = null;
     setDragging(false);
     if (sheetRef.current) sheetRef.current.style.transform = "";
     if (moved < 8) {
-      onSnap(snap === "collapsed" ? "medium" : snap === "medium" ? "expanded" : "medium");
+      const order: SheetSnap[] = selected ? ["selected", "half", "expanded"] : ["collapsed", "half", "expanded"];
+      const index = order.indexOf(snap);
+      onSnap(order[Math.min(order.length - 1, index + 1)] ?? snap);
       return;
     }
     onSnap(nearest(next));
   };
 
   return (
-    <div ref={rootRef} className="results-sheet-host">
+    <div ref={rootRef} className="results-sheet-host" style={{ ["--sheet-peek" as string]: `${Math.max(0, (height || 640) - translateY)}px` }}>
       <section
         ref={sheetRef}
         className={`results-sheet ${dragging ? "" : "is-animated"}`}
@@ -101,7 +122,7 @@ export function ResultsSheet({
           <span />
         </button>
         {header}
-        <div className="sheet-body">{children}</div>
+        {selected && snap === "selected" && selectedCard ? selectedCard : <div className="sheet-body">{children}</div>}
       </section>
     </div>
   );

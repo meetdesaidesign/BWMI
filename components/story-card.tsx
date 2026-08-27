@@ -1,8 +1,10 @@
 "use client";
 
 import { Check, Copy, Download, Share2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { BrandWordmark } from "./brand-mark";
 import { tokens } from "@/design-system/generated/tokens";
+import { assetPath, brand } from "@/lib/assets";
 import type { Locale } from "@/lib/types";
 import type { getCopy } from "@/lib/i18n";
 
@@ -10,7 +12,16 @@ type Copy = ReturnType<typeof getCopy>;
 
 export function StoryCard({ t }: { locale: Locale; t: Copy }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const logoRef = useRef<HTMLImageElement | null>(null);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = assetPath(brand.logoHorizontalPng);
+    img.onload = () => {
+      logoRef.current = img;
+    };
+  }, []);
 
   const render = () => {
     const canvas = canvasRef.current;
@@ -45,14 +56,15 @@ export function StoryCard({ t }: { locale: Locale; t: Copy }) {
     ctx.fillText(t.storyConfirmed, 80, 1350);
     ctx.strokeStyle = tokens.colorGray800;
     ctx.beginPath(); ctx.moveTo(80, 1600); ctx.lineTo(1000, 1600); ctx.stroke();
-    ctx.fillStyle = tokens.actionPrimary;
-    ctx.beginPath(); ctx.arc(106, 1704, 26, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = tokens.colorGray0;
-    ctx.font = "600 38px sans-serif";
-    ctx.fillText(t.storyBrand, 160, 1696);
+    const logo = logoRef.current;
+    if (logo) {
+      const height = 96;
+      const width = (logo.naturalWidth / logo.naturalHeight) * height;
+      ctx.drawImage(logo, 48, 1636, width, height);
+    }
     ctx.fillStyle = tokens.colorGray400;
     ctx.font = "400 27px sans-serif";
-    ctx.fillText("pakka.city/ward-14", 160, 1742);
+    ctx.fillText(t.storyUrl, 86, 1768);
     return canvas;
   };
 
@@ -60,7 +72,7 @@ export function StoryCard({ t }: { locale: Locale; t: Copy }) {
     const canvas = render();
     if (!canvas) return;
     const a = document.createElement("a");
-    a.download = "pakka-share-card.png";
+    a.download = "fixo-share-card.png";
     a.href = canvas.toDataURL("image/png");
     a.click();
   };
@@ -70,7 +82,7 @@ export function StoryCard({ t }: { locale: Locale; t: Copy }) {
     if (!canvas) return;
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
     if (!blob) return;
-    const file = new File([blob], "pakka-share-card.png", { type: "image/png" });
+    const file = new File([blob], "fixo-share-card.png", { type: "image/png" });
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       await navigator.share({ files: [file], title: t.shareCardTitle });
     } else download();
@@ -87,7 +99,10 @@ export function StoryCard({ t }: { locale: Locale; t: Copy }) {
       <canvas ref={canvasRef} className="story-canvas" aria-label={t.storyAria} />
       <div className="story-preview" aria-hidden="true">
         <p>{t.storyKicker}</p><strong>47</strong><h3>{t.storyHeadline}</h3><small>{t.storyConfirmed}</small>
-        <div className="story-award"><span><Check size={14} /></span><div>{t.storyBrand}<small>pakka.city/ward-14</small></div></div>
+        <div className="story-award">
+          <BrandWordmark alt="" height={32} />
+          <small>{t.storyUrl}</small>
+        </div>
       </div>
       <div className="share-actions">
         <button className="primary-button" onClick={share}><Share2 size={18} />{t.share}</button>

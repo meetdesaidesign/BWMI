@@ -4,21 +4,33 @@
 
 import {
   ArrowLeft, ArrowRight, Camera, Check, CircleAlert, Globe2,
-  Home, ImagePlus, LocateFixed, MapPin, Navigation, Plus, RotateCcw, ShieldCheck,
+  ImagePlus, LocateFixed, MapPin, RotateCcw, ShieldCheck,
   Sparkles, Users, X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, NavBar, TabBar, Toast } from "antd-mobile";
-import { formatCopy, getCopy, getStatusLabel } from "@/lib/i18n";
+import { useEffect, useRef, useState } from "react";
+import { Button, NavBar, Toast } from "antd-mobile";
+import { formatCopy, getCopy, getStatusLabel, localizedField } from "@/lib/i18n";
+import { LOCALE_META, resolveInitialLocale, writeStoredLocale } from "@/lib/locale";
 import { seedIssues, WARD_CENTER } from "@/lib/seed";
 import { assetPath } from "@/lib/assets";
 import type { AIExtraction, Category, Issue, Locale } from "@/lib/types";
-import { MapLoader } from "./map-loader";
 import { StoryCard } from "./story-card";
+import { ProfileAvatar } from "./profile-avatar";
+import { ProfileSheet } from "./profile-sheet";
 import { CategoryIcon } from "./category-icon";
-import { IssueCarousel } from "./issue-carousel";
+import { NearbyScreen, type NearbyScreenHandle } from "./nearby-screen";
+import { LanguageSheet } from "./language-sheet";
+import { BottomNavigation } from "./bottom-navigation";
+import { readStoredPhoneVerified, writeStoredPhoneVerified } from "@/lib/profile";
 
 type Screen = "nearby" | "mine" | "issue" | "capture" | "analyzing" | "review" | "success" | "contest" | "confirmed" | "story";
+type HomeScreen = "nearby" | "mine";
+
+const reportFlow: Screen[] = ["capture", "analyzing", "review"];
+
+function isReportHistory(state: unknown) {
+  return Boolean(state && typeof state === "object" && "fixo" in state && (state as { fixo?: string }).fixo === "report");
+}
 
 const statusClass: Record<Issue["status"], string> = {
   reported: "slate", acknowledged: "slate", in_progress: "amber", awaiting_confirmation: "violet", confirmed: "green", contested: "red",
@@ -28,40 +40,35 @@ const staticDemoExtraction: AIExtraction = {
   category: "Roads",
   title_en: "Deep pothole with broken road surface",
   title_hi: "टूटी सड़क पर गहरा गड्ढा",
+  title_kn: "ಒಡೆದ ರಸ್ತೆಯಲ್ಲಿ ಆಳವಾದ ಗುಂಡಿ",
   description_en: "A large pothole and crumbling asphalt create a serious hazard for two-wheelers.",
   description_hi: "बड़ा गड्ढा और टूटी हुई सड़क दोपहिया वाहनों के लिए गंभीर खतरा है।",
+  description_kn: "ದೊಡ್ಡ ಗುಂಡಿ ಮತ್ತು ಒಡೆದ ರಸ್ತೆ ದ್ವಿಚಕ್ರ ವಾಹನಗಳಿಗೆ ಗಂಭೀರ ಅಪಾಯ.",
   severity: "high",
   confidence: 0.94,
   needs_user_review: false,
-  duplicate_id: "PK-14028",
+  duplicate_id: "FX-14028",
 };
 
 function local(issue: Issue, locale: Locale, field: "title" | "description" | "reportedAgo" | "department" | "role" | "escalation" | "expected") {
-  const suffix = locale === "hi" ? "Hi" : "En";
-  return issue[`${field}${suffix}` as keyof Issue] as string;
+  return localizedField(issue as unknown as Record<string, unknown>, locale, field);
 }
 
-function Header({ locale, setLocale, t }: { locale: Locale; setLocale: (l: Locale) => void; t: ReturnType<typeof getCopy> }) {
+function Header({ locale, t, phoneVerified, onLanguage, onOpenProfile }: { locale: Locale; t: ReturnType<typeof getCopy>; phoneVerified: boolean; onLanguage: () => void; onOpenProfile: () => void }) {
   return (
     <header className="page-header">
-      <div className="brand-lockup"><span className="brand-dot" />pakka</div>
-      <button className="language-button" onClick={() => setLocale(locale === "en" ? "hi" : "en")} aria-label={t.languageAria}>
-        <Globe2 size={16} />{t.language}
+      <button
+        type="button"
+        className="map-profile page-profile"
+        onClick={onOpenProfile}
+        aria-label={phoneVerified ? t.profileAriaVerified : t.profileAria}
+      >
+        <ProfileAvatar size={38} verified={phoneVerified} alt="" />
+      </button>
+      <button className="language-button" onClick={onLanguage} aria-label={t.languageAria}>
+        <Globe2 size={16} />{LOCALE_META[locale].shortLabel}
       </button>
     </header>
-  );
-}
-
-function BottomNav({ screen, onNavigate, t }: { screen: Screen; onNavigate: (s: Screen) => void; t: ReturnType<typeof getCopy> }) {
-  const activeKey = screen === "mine" ? "mine" : screen === "capture" ? "report" : "nearby";
-  return (
-    <nav className="bottom-nav" aria-label={t.navAria}>
-      <TabBar activeKey={activeKey} onChange={(key) => onNavigate(key === "mine" ? "mine" : key === "report" ? "capture" : "nearby")}>
-        <TabBar.Item key="nearby" icon={<Home size={21} />} title={t.nearby} />
-        <TabBar.Item key="report" icon={<span className="report-tab-icon"><Plus size={23} /></span>} title={t.report} />
-        <TabBar.Item key="mine" icon={<Navigation size={21} />} title={t.reports} />
-      </TabBar>
-    </nav>
   );
 }
 
@@ -69,13 +76,14 @@ function StatusPill({ issue, locale }: { issue: Issue; locale: Locale }) {
   return <span className={`status-pill ${statusClass[issue.status]}`}>{getStatusLabel(issue.status, locale)}</span>;
 }
 
-export function PakkaApp() {
+export function FixoApp() {
   const [locale, setLocale] = useState<Locale>("en");
+  const [languageOpen, setLanguageOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
   const [screen, setScreen] = useState<Screen>("nearby");
   const [issues, setIssues] = useState(seedIssues);
   const [selectedId, setSelectedId] = useState(seedIssues[0].id);
-  const [highlightedId, setHighlightedId] = useState(seedIssues[0].id);
-  const [recenterNonce, setRecenterNonce] = useState(0);
   const [backed, setBacked] = useState<string[]>([]);
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
@@ -85,11 +93,26 @@ export function PakkaApp() {
   const [contact, setContact] = useState("");
   const [different, setDifferent] = useState(false);
   const [contestPhoto, setContestPhoto] = useState<string | null>(null);
+  const [hintReport, setHintReport] = useState(false);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const contestRef = useRef<HTMLInputElement>(null);
+  const nearbyRef = useRef<NearbyScreenHandle>(null);
+  const mineScrollRef = useRef<HTMLDivElement>(null);
+  const lastHome = useRef<HomeScreen>("nearby");
+  const openingReport = useRef(false);
   const t = getCopy(locale);
   const selected = issues.find((i) => i.id === selectedId) ?? issues[0];
-  const highlighted = issues.find((i) => i.id === highlightedId);
+
+  useEffect(() => {
+    setLocale(resolveInitialLocale());
+    setPhoneVerified(readStoredPhoneVerified());
+  }, []);
+
+  useEffect(() => {
+    writeStoredLocale(locale);
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   useEffect(() => {
     const update = () => setOffline(!navigator.onLine);
@@ -97,16 +120,88 @@ export function PakkaApp() {
     return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); };
   }, []);
 
-  const highlightIssue = (issue: Issue) => {
-    setHighlightedId(issue.id);
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 599px)").matches) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    try {
+      if (sessionStorage.getItem("fixo-report-hint")) return;
+      sessionStorage.setItem("fixo-report-hint", "1");
+    } catch {
+      return;
+    }
+    setHintReport(true);
+    const timer = window.setTimeout(() => setHintReport(false), 1800);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const sync = () => setKeyboardOpen(window.innerHeight - viewport.height > 96);
+    sync();
+    viewport.addEventListener("resize", sync);
+    viewport.addEventListener("scroll", sync);
+    return () => {
+      viewport.removeEventListener("resize", sync);
+      viewport.removeEventListener("scroll", sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    const onPop = () => {
+      setScreen((current) => (reportFlow.includes(current) ? lastHome.current : current));
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  const isHome = screen === "nearby" || screen === "mine";
+
+  const goHome = (next: HomeScreen) => {
+    lastHome.current = next;
+    setScreen(next);
   };
 
   const navigate = (next: Screen) => {
+    if (next === "nearby" || next === "mine") lastHome.current = next;
     setScreen(next);
     document.querySelector(".phone-shell")?.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const chooseIssue = (issue: Issue) => { setSelectedId(issue.id); setHighlightedId(issue.id); navigate("issue"); };
+  const onAroundYou = () => {
+    if (screen === "nearby") {
+      nearbyRef.current?.resetPeek();
+      return;
+    }
+    goHome("nearby");
+  };
+
+  const onMyReports = () => {
+    if (screen === "mine") {
+      mineScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    goHome("mine");
+  };
+
+  const openReport = () => {
+    if (reportFlow.includes(screen) || openingReport.current) return;
+    openingReport.current = true;
+    requestLocation();
+    if (!isReportHistory(history.state)) history.pushState({ fixo: "report" }, "");
+    setScreen("capture");
+    window.setTimeout(() => { openingReport.current = false; }, 400);
+  };
+
+  const closeReport = () => {
+    if (isReportHistory(history.state)) {
+      history.back();
+      return;
+    }
+    goHome(lastHome.current);
+  };
+
+  const chooseIssue = (issue: Issue) => { setSelectedId(issue.id); navigate("issue"); };
 
   const readFile = (file?: File, contest = false) => {
     if (!file) return;
@@ -147,7 +242,7 @@ export function PakkaApp() {
       const result = await response.json() as AIExtraction;
       setExtraction(result);
     } catch {
-      setExtraction({ category: "Roads", title_en: "Road surface damage", title_hi: "सड़क की सतह क्षतिग्रस्त", description_en: "A damaged patch of road needs a check.", description_hi: "सड़क के क्षतिग्रस्त हिस्से की जाँच आवश्यक है।", severity: "medium", confidence: 0.42, needs_user_review: true, duplicate_id: "PK-14028" });
+      setExtraction({ category: "Roads", title_en: "Road surface damage", title_hi: "सड़क की सतह क्षतिग्रस्त", title_kn: "ರಸ್ತೆ ಮೇಲ್ಮೈ ಹಾನಿ", description_en: "A damaged patch of road needs a check.", description_hi: "सड़क के क्षतिग्रस्त हिस्से की जाँच आवश्यक है।", description_kn: "ರಸ್ತೆಯ ಹಾನಿಯಾದ ಭಾಗವನ್ನು ಪರಿಶೀಲಿಸಬೇಕು.", severity: "medium", confidence: 0.42, needs_user_review: true, duplicate_id: "FX-14028" });
     }
     window.setTimeout(() => navigate("review"), 500);
   };
@@ -161,92 +256,111 @@ export function PakkaApp() {
 
   const submitReport = () => {
     if (!extraction) return;
+    const now = new Date().toISOString();
     const newIssue: Issue = {
-      id: `PK-14${40 + issues.length}`, category: extraction.category, titleEn: extraction.title_en, titleHi: extraction.title_hi,
-      descriptionEn: extraction.description_en, descriptionHi: extraction.description_hi, address: "Near your current location · Jayanagar", lat: WARD_CENTER[0] - 0.0004, lng: WARD_CENTER[1] - 0.0007,
+      id: `FX-14${40 + issues.length}`, category: extraction.category,       titleEn: extraction.title_en, titleHi: extraction.title_hi, titleKn: extraction.title_kn || extraction.title_en,
+      descriptionEn: extraction.description_en, descriptionHi: extraction.description_hi, descriptionKn: extraction.description_kn || extraction.description_en, address: "Near your current location · Jayanagar", lat: WARD_CENTER[0] - 0.0004, lng: WARD_CENTER[1] - 0.0007,
       image: photo ?? assetPath("/images/pothole-ambedkar.jpg"), supporters: 1, aliases: ["You"], status: "reported", severity: extraction.severity,
-      reportedAgoEn: "Just now", reportedAgoHi: "अभी", departmentEn: "Finding the right team", departmentHi: "सही टीम ढूँढ रहे हैं", roleEn: "Ward control room", roleHi: "वार्ड नियंत्रण कक्ष",
-      escalationEn: "Ward officer · 1800-14-0014", escalationHi: "वार्ड अधिकारी · 1800-14-0014", expectedEn: "Update within 24 hours", expectedHi: "24 घंटे में अपडेट", mine: true,
-      timeline: [{ status: "reported", labelEn: "Submitted", labelHi: "जमा हुई", date: "Just now", noteEn: "Photo and approximate location added", noteHi: "फोटो और अनुमानित जगह जोड़ी गई" }],
+      reportedAgoEn: "Just now", reportedAgoHi: "अभी", reportedAgoKn: "ಈಗಷ್ಟೇ", reportedAt: now, updatedAt: now,
+      departmentEn: "Finding the right team", departmentHi: "सही टीम ढूँढ रहे हैं", departmentKn: "ಸರಿಯಾದ ತಂಡ ಹುಡುಕುತ್ತಿದ್ದೇವೆ", roleEn: "Ward control room", roleHi: "वार्ड नियंत्रण कक्ष", roleKn: "ವಾರ್ಡ್ ನಿಯಂತ್ರಣ ಕೋಣೆ",
+      escalationEn: "Ward office · 1800-14-0014", escalationHi: "वार्ड कार्यालय · 1800-14-0014", escalationKn: "ವಾರ್ಡ್ ಕಚೇರಿ · 1800-14-0014", expectedEn: "Update after routing", expectedHi: "रूटिंग के बाद अपडेट", expectedKn: "ರೂಟಿಂಗ್ ನಂತರ ಅಪ್‌ಡೇಟ್", mine: true, routingPending: true, trust: [],
+      timeline: [{ status: "reported", labelEn: "Submitted", labelHi: "जमा हुई", labelKn: "ಸಲ್ಲಿಸಲಾಗಿದೆ", date: "Just now", noteEn: "Photo and approximate location added", noteHi: "फोटो और अनुमानित जगह जोड़ी गई", noteKn: "ಫೋಟೋ ಮತ್ತು ಅಂದಾಜು ಸ್ಥಳ ಸೇರಿಸಲಾಗಿದೆ" }],
     };
     setIssues((list) => [newIssue, ...list]); setSelectedId(newIssue.id); navigate("success");
   };
 
   const confirmFix = () => {
-    setIssues((list) => list.map((i) => i.id === selected.id ? { ...i, status: "confirmed", timeline: [...i.timeline, { status: "confirmed", labelEn: "Confirmed by you", labelHi: "आपने पुष्टि की", date: "Just now", noteEn: "You confirmed the repair", noteHi: "आपने मरम्मत की पुष्टि की" }] } : i));
+    setIssues((list) => list.map((i) => i.id === selected.id ? { ...i, status: "confirmed", timeline: [...i.timeline, { status: "confirmed", labelEn: "Confirmed by you", labelHi: "आपने पुष्टि की", labelKn: "ನೀವು ದೃಢಪಡಿಸಿದ್ದೀರಿ", date: "Just now", noteEn: "You confirmed the repair", noteHi: "आपने मरम्मत की पुष्टि की", noteKn: "ನೀವು ದುರಸ್ತಿಯನ್ನು ದೃಢಪಡಿಸಿದ್ದೀರಿ" }] } : i));
     navigate("confirmed");
   };
 
   const contestFix = () => {
     if (!contestPhoto) return;
-    setIssues((list) => list.map((i) => i.id === selected.id ? { ...i, status: "contested", timeline: [...i.timeline, { status: "contested", labelEn: "Reopened by you", labelHi: "आपने फिर खोला", date: "Just now", noteEn: "New photo shows the issue is still there", noteHi: "नई फोटो में समस्या अभी भी है" }] } : i));
+    setIssues((list) => list.map((i) => i.id === selected.id ? { ...i, status: "contested", timeline: [...i.timeline, { status: "contested", labelEn: "Reopened by you", labelHi: "आपने फिर खोला", labelKn: "ನೀವು ಮತ್ತೆ ತೆರೆದಿದ್ದೀರಿ", date: "Just now", noteEn: "New photo shows the issue is still there", noteHi: "नई फोटो में समस्या अभी भी है", noteKn: "ಹೊಸ ಫೋಟೋದಲ್ಲಿ ಸಮಸ್ಯೆ ಇನ್ನೂ ಇದೆ" }] } : i));
     navigate("issue");
   };
 
-  const nearby = useMemo(() => [...issues].sort((a, b) => b.supporters - a.supporters), [issues]);
   const myIssues = issues.filter((issue) => issue.mine);
   const backedIssues = backed.map((id) => issues.find((issue) => issue.id === id)).filter((issue): issue is Issue => issue != null && !issue.mine);
-  const carouselPeek = "calc(var(--carousel-height) + var(--space-10))";
 
   return (
     <div className="app-root">
       {offline && <div className="offline-banner"><CircleAlert size={15} />{t.offline}</div>}
-      {screen === "nearby" && <>
-        <div className="nearby-stage" style={{ ["--sheet-peek" as string]: carouselPeek }}>
-          <MapLoader issues={nearby} selected={highlighted} onSelect={highlightIssue} recenterNonce={recenterNonce} locale={locale} />
-          <div className="map-chrome">
-            <div className="map-brand"><span className="brand-dot" />pakka<small>{t.ward}</small></div>
-            <button className="language-button" onClick={() => setLocale(locale === "en" ? "hi" : "en")} aria-label={t.languageAria}>
-              <Globe2 size={16} />{t.language}
-            </button>
+      <div className={`home-stack${isHome ? "" : " is-covered"}${keyboardOpen ? " is-nav-hidden" : ""}`} {...(!isHome ? { inert: true, "aria-hidden": true } : {})}>
+        <div className="home-body">
+          <div className={`screen-pane${screen === "mine" ? " is-dormant" : ""}`} {...(screen === "mine" ? { inert: true, "aria-hidden": true } : {})}>
+            <NearbyScreen
+              ref={nearbyRef}
+              issues={issues}
+              locale={locale}
+              t={t}
+              offline={offline}
+              onChangeLocale={setLocale}
+              onOpenIssue={chooseIssue}
+              onReport={openReport}
+              onOpenProfile={() => setProfileOpen(true)}
+              phoneVerified={phoneVerified}
+            />
           </div>
-          <button className="map-recenter" onClick={() => setRecenterNonce((n) => n + 1)} aria-label={t.recenter}>
-            <LocateFixed size={18} />
-          </button>
-          <IssueCarousel
-            issues={nearby}
-            selectedId={highlightedId}
-            locale={locale}
-            t={t}
-            onSelect={highlightIssue}
-            onOpen={chooseIssue}
-          />
-        </div>
-        <BottomNav screen={screen} onNavigate={navigate} t={t} />
-      </>}
-
-      {screen === "mine" && <>
-        <div className="screen-scroll">
-          <Header locale={locale} setLocale={setLocale} t={t} />
-          <section className="page-title">
-            <h1 className="type-heading-lg">{t.reports}</h1>
-            <p className="type-body-md">{t.mineIntro}</p>
-          </section>
-          <section className="mine-feed">
-            {myIssues.length === 0 && backedIssues.length === 0 && (
-              <div className="empty-state">
-                <span className="asset-empty-state" data-asset-id="empty.nearby" aria-hidden><MapPin size={48} /></span>
-                <h2 className="type-heading-sm">{t.empty}</h2>
-                <p className="type-body-md">{t.emptyHelp}</p>
-              </div>
-            )}
-            <div className="issue-list">
-              {myIssues.map((issue) => <IssueCard key={issue.id} issue={issue} locale={locale} t={t} selected={false} onClick={() => chooseIssue(issue)} />)}
-              {backedIssues.map((issue) => <IssueCard key={`backed-${issue.id}`} issue={issue} locale={locale} t={t} selected={false} onClick={() => chooseIssue(issue)} />)}
+          <div className={`screen-pane${screen === "mine" ? "" : " is-dormant"}`} {...(screen !== "mine" ? { inert: true, "aria-hidden": true } : {})}>
+            <div className="screen-scroll" ref={mineScrollRef}>
+              <Header locale={locale} t={t} phoneVerified={phoneVerified} onLanguage={() => setLanguageOpen(true)} onOpenProfile={() => setProfileOpen(true)} />
+              <section className="page-title">
+                <h1 className="type-heading-lg">{t.reports}</h1>
+                <p className="type-body-md">{t.mineIntro}</p>
+              </section>
+              <section className="mine-feed">
+                {myIssues.length === 0 && backedIssues.length === 0 && (
+                  <div className="empty-state">
+                    <span className="asset-empty-state" data-asset-id="empty.nearby" aria-hidden><MapPin size={48} /></span>
+                    <h2 className="type-heading-sm">{t.empty}</h2>
+                    <p className="type-body-md">{t.emptyHelp}</p>
+                  </div>
+                )}
+                <div className="issue-list">
+                  {myIssues.map((issue) => <IssueCard key={issue.id} issue={issue} locale={locale} t={t} selected={false} onClick={() => chooseIssue(issue)} />)}
+                  {backedIssues.map((issue) => <IssueCard key={`backed-${issue.id}`} issue={issue} locale={locale} t={t} selected={false} onClick={() => chooseIssue(issue)} />)}
+                </div>
+              </section>
             </div>
-          </section>
+          </div>
         </div>
-        <BottomNav screen={screen} onNavigate={navigate} t={t} />
-      </>}
+        <BottomNavigation
+          activeItem={screen === "mine" ? "reports" : "around"}
+          onAroundYou={onAroundYou}
+          onMyReports={onMyReports}
+          onReport={openReport}
+          hidden={keyboardOpen}
+          hint={hintReport}
+          t={t}
+        />
+      </div>
 
-      {screen === "issue" && <IssueDetail issue={selected} locale={locale} t={t} backed={backed.includes(selected.id)} onBack={() => navigate("nearby")} onBackIssue={() => backIssue(selected.id)} onConfirm={confirmFix} onContest={() => navigate("contest")} />}
-      {screen === "capture" && <CaptureScreen locale={locale} t={t} photo={photo} locationState={locationState} fileRef={fileRef} onBack={() => navigate("nearby")} onFile={(f) => readFile(f)} onDemoPhoto={loadDemoPhoto} onLocation={requestLocation} onContinue={analyze} />}
-      {screen === "analyzing" && <AnalyzingScreen t={t} photo={photo} />}
-      {screen === "review" && extraction && <ReviewScreen locale={locale} t={t} extraction={extraction} setExtraction={setExtraction} photo={photo} locationState={locationState} contact={contact} setContact={setContact} duplicate={issues.find((i) => i.id === extraction.duplicate_id)} different={different} setDifferent={setDifferent} onBack={() => navigate("capture")} onBackExisting={(i) => { backIssue(i.id); setSelectedId(i.id); navigate("issue"); }} onSubmit={submitReport} />}
-      {screen === "success" && <ResultScreen icon="sent" eyebrow={t.submittedEyebrow} title={t.submitted} body={t.submittedHelp} primary={t.viewReport} onPrimary={() => navigate("issue")} />}
-      {screen === "contest" && <ContestScreen t={t} photo={contestPhoto} fileRef={contestRef} onFile={(f) => readFile(f, true)} onBack={() => navigate("issue")} onSubmit={contestFix} />}
-      {screen === "confirmed" && <ResultScreen icon="confirmed" eyebrow={t.confirmedEyebrow} title={t.confirmedTitle} body={t.confirmedHelp} primary={t.makeCard} onPrimary={() => navigate("story")} secondary={t.viewReport} onSecondary={() => navigate("issue")} />}
-      {screen === "story" && <div className="full-page"><TopBar title={t.shareCardTitle} onBack={() => navigate("confirmed")} /><div className="story-page"><h1 className="type-heading-lg">{t.shareCardTitle}</h1><p className="type-body-md">{t.shareCardHelp}</p><StoryCard locale={locale} t={t} /></div></div>}
+      {!isHome && (
+        <div className="flow-layer">
+          {screen === "issue" && <IssueDetail issue={selected} locale={locale} t={t} backed={backed.includes(selected.id)} onBack={() => goHome(lastHome.current)} onBackIssue={() => backIssue(selected.id)} onConfirm={confirmFix} onContest={() => navigate("contest")} />}
+          {screen === "capture" && <CaptureScreen locale={locale} t={t} photo={photo} locationState={locationState} fileRef={fileRef} onBack={closeReport} onFile={(f) => readFile(f)} onDemoPhoto={loadDemoPhoto} onLocation={requestLocation} onContinue={analyze} />}
+          {screen === "analyzing" && <AnalyzingScreen t={t} photo={photo} />}
+          {screen === "review" && extraction && <ReviewScreen locale={locale} t={t} extraction={extraction} setExtraction={setExtraction} photo={photo} locationState={locationState} contact={contact} setContact={setContact} duplicate={issues.find((i) => i.id === extraction.duplicate_id)} different={different} setDifferent={setDifferent} onBack={() => navigate("capture")} onBackExisting={(i) => { backIssue(i.id); setSelectedId(i.id); navigate("issue"); }} onSubmit={submitReport} />}
+          {screen === "success" && <ResultScreen icon="sent" eyebrow={t.submittedEyebrow} title={t.submitted} body={t.submittedHelp} primary={t.viewReport} onPrimary={() => navigate("issue")} />}
+          {screen === "contest" && <ContestScreen t={t} photo={contestPhoto} fileRef={contestRef} onFile={(f) => readFile(f, true)} onBack={() => navigate("issue")} onSubmit={contestFix} />}
+          {screen === "confirmed" && <ResultScreen icon="confirmed" eyebrow={t.confirmedEyebrow} title={t.confirmedTitle} body={t.confirmedHelp} primary={t.makeCard} onPrimary={() => navigate("story")} secondary={t.viewReport} onSecondary={() => navigate("issue")} />}
+          {screen === "story" && <div className="full-page"><TopBar title={t.shareCardTitle} onBack={() => navigate("confirmed")} /><div className="story-page"><h1 className="type-heading-lg">{t.shareCardTitle}</h1><p className="type-body-md">{t.shareCardHelp}</p><StoryCard locale={locale} t={t} /></div></div>}
+        </div>
+      )}
+      <LanguageSheet open={languageOpen} locale={locale} t={t} onClose={() => setLanguageOpen(false)} onChange={setLocale} />
+      <ProfileSheet
+        open={profileOpen}
+        t={t}
+        verified={phoneVerified}
+        reportCount={myIssues.length}
+        areaLabel={t.ward}
+        onVerify={() => {
+          setPhoneVerified(true);
+          writeStoredPhoneVerified(true);
+        }}
+        onClose={() => setProfileOpen(false)}
+      />
     </div>
   );
 }
@@ -289,7 +403,7 @@ function IssueDetail({ issue, locale, t, backed, onBack, onBackIssue, onConfirm,
           <h2 className="type-heading-sm">{t.timeline}</h2>
           <span className="type-caption">{formatCopy(t.updatesCount, { count: issue.timeline.length })}</span>
         </div>
-        <div className="timeline">{issue.timeline.map((event, index) => <div className={`timeline-event ${index === issue.timeline.length - 1 ? "latest" : ""}`} key={`${event.status}-${event.date}`}><span className="timeline-node">{index < issue.timeline.length - 1 ? <Check size={12} /> : <span />}</span><div><strong className="type-label-md">{locale === "hi" ? event.labelHi : event.labelEn}</strong><time className="type-caption">{event.date}</time>{(locale === "hi" ? event.noteHi : event.noteEn) && <p className="type-caption">{locale === "hi" ? event.noteHi : event.noteEn}</p>}</div></div>)}</div>
+        <div className="timeline">{issue.timeline.map((event, index) => <div className={`timeline-event ${index === issue.timeline.length - 1 ? "latest" : ""}`} key={`${event.status}-${event.date}`}><span className="timeline-node">{index < issue.timeline.length - 1 ? <Check size={12} /> : <span />}</span><div><strong className="type-label-md">{locale === "hi" ? event.labelHi : locale === "kn" ? event.labelKn : event.labelEn}</strong><time className="type-caption">{event.date}</time>{(locale === "hi" ? event.noteHi : locale === "kn" ? event.noteKn : event.noteEn) && <p className="type-caption">{locale === "hi" ? event.noteHi : locale === "kn" ? event.noteKn : event.noteEn}</p>}</div></div>)}</div>
       </section>
       <section className="owner-card"><p className="eyebrow">{t.responsibility}</p><h2 className="type-heading-sm">{local(issue, locale, "department")}</h2><dl><div><dt>{t.assigned}</dt><dd>{local(issue, locale, "role")}</dd></div><div><dt>{t.expected}</dt><dd>{local(issue, locale, "expected")}</dd></div><div><dt>{t.escalation}</dt><dd>{local(issue, locale, "escalation")}</dd></div></dl></section>
       {issue.status === "awaiting_confirmation" && <section className="confirm-card"><div className="confirmation-seal"><ShieldCheck size={24} /></div><p className="eyebrow">{t.statusCheckFix}</p><h2 className="type-heading-md">{t.awaiting}</h2><p className="type-body-md">{t.inspect}</p><Button block color="success" size="large" className="primary-button green" onClick={onConfirm}><Check size={18} />{t.fixed}</Button><Button block fill="outline" size="large" className="secondary-button danger" onClick={onContest}><X size={18} />{t.broken}</Button></section>}
@@ -314,8 +428,8 @@ function AnalyzingScreen({ t, photo }: { t: ReturnType<typeof getCopy>; photo: s
 
 function ReviewScreen({ locale, t, extraction, setExtraction, photo, locationState, contact, setContact, duplicate, different, setDifferent, onBack, onBackExisting, onSubmit }: { locale: Locale; t: ReturnType<typeof getCopy>; extraction: AIExtraction; setExtraction: (e: AIExtraction) => void; photo: string | null; locationState: string; contact: string; setContact: (v: string) => void; duplicate?: Issue; different: boolean; setDifferent: (v: boolean) => void; onBack: () => void; onBackExisting: (i: Issue) => void; onSubmit: () => void }) {
   const categories: Category[] = ["Roads", "Waste", "Water", "Lighting", "Drainage"];
-  const titleKey = locale === "hi" ? "title_hi" : "title_en";
-  const descKey = locale === "hi" ? "description_hi" : "description_en";
+  const titleKey = locale === "hi" ? "title_hi" : locale === "kn" && extraction.title_kn ? "title_kn" : "title_en";
+  const descKey = locale === "hi" ? "description_hi" : locale === "kn" && extraction.description_kn ? "description_kn" : "description_en";
   return <div className="full-page review-page"><TopBar title={t.review} onBack={onBack} /><div className="review-evidence">{photo && <img src={photo} alt={t.photoAlt} />}<div><span><MapPin size={14} />{locationState === "ready" ? t.locationReady : t.locationApprox}</span><small><Sparkles size={12} />{t.aiSuggestion}</small></div></div>
     <div className="review-form">
       {duplicate && !different && <div className="duplicate-card"><p className="eyebrow">{t.duplicate}</p><h3 className="type-heading-sm">{local(duplicate, locale, "title")}</h3><p className="type-caption">{t.duplicateHelp}</p><p className="type-caption">{duplicate.supporters} {t.supporters} · {duplicate.address}</p><button type="button" onClick={() => onBackExisting(duplicate)}><Users size={17} />{t.seeToo}</button><button type="button" className="text-button" onClick={() => setDifferent(true)}>{t.different}</button></div>}

@@ -20,4 +20,4 @@
 
 **Content:** Locale title under the card. Support count as a tabular badge on the photo. Status color lives on the badge (brand / repair green / destructive), not on the card chrome.
 
-**Edge cases:** Missing image → neutral surface in the same slot, never collapse. Selected marker uses `elevation.2` and a stronger ring so it stays visible against OSM tiles (EX-004). Overlapping photos: selected wins z-index.
+**Edge cases:** Missing image → neutral surface in the same slot, never collapse. Selected marker uses `elevation.2` and a stronger ring so it stays visible against the light basemap (EX-004). Overlapping photos: selected wins z-index.

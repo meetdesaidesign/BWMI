@@ -17,7 +17,7 @@ const statusClass: Record<Issue["status"], string> = {
 };
 
 function titleOf(issue: Issue, locale: Locale) {
-  return locale === "hi" ? issue.titleHi : issue.titleEn;
+  return locale === "hi" ? issue.titleHi : locale === "kn" ? issue.titleKn : issue.titleEn;
 }
 
 export function IssueCarousel({

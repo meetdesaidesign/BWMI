@@ -1,4 +1,4 @@
-# Pakka — Product Requirements Document
+# Fixo — Product Requirements Document
 
 **Status:** Hackathon MVP  
 **Product type:** Mobile-first civic issue reporting web app  
@@ -8,13 +8,13 @@
 
 ## 1. Product summary
 
-Pakka helps residents report public infrastructure and municipal problems, follow what happens after reporting, and verify whether the problem was actually fixed.
+Fixo helps residents report public infrastructure and municipal problems, follow what happens after reporting, and verify whether the problem was actually fixed.
 
 The product is built around one principle:
 
 > A repair is not finished until a resident confirms it.
 
-Residents can photograph a pothole, waste pile, water leak, broken streetlight, or drainage problem. Pakka uses the photo and location to prepare most of the report automatically. Reports about the same physical problem are consolidated so neighbours can support one canonical issue instead of creating duplicates.
+Residents can photograph a pothole, waste pile, water leak, broken streetlight, or drainage problem. Fixo uses the photo and location to prepare most of the report automatically. Reports about the same physical problem are consolidated so neighbours can support one canonical issue instead of creating duplicates.
 
 Government updates are recorded in a public proof trail. When a department marks work complete, residents can confirm the fix or contest it with current photographic evidence. Confirmed fixes can generate a privacy-safe social card that residents may share.
 
@@ -32,7 +32,7 @@ Residents commonly experience:
 - Limited visibility into responsibility and escalation paths.
 - Little motivation to report another issue after a poor first experience.
 
-For occasional users, every extra field and decision increases abandonment. Pakka must therefore work for someone standing outdoors, using one hand, who wants to report a problem and continue with their day.
+For occasional users, every extra field and decision increases abandonment. Fixo must therefore work for someone standing outdoors, using one hand, who wants to report a problem and continue with their day.
 
 ## 3. Product goals
 
@@ -98,7 +98,7 @@ An agency may mark work complete, but final confirmed closure belongs to residen
 
 ### Organizational accountability, not personal blame
 
-Pakka identifies the responsible department, operational role, response window, and escalation channel. It does not publish speculative rankings or blame individual officials.
+Fixo identifies the responsible department, operational role, response window, and escalation channel. It does not publish speculative rankings or blame individual officials.
 
 ### Privacy by default
 
@@ -108,28 +108,28 @@ Public participation counts should not require public personal identities. Conta
 
 ### 6.1 Report a new issue
 
-1. Resident opens Pakka as a guest.
+1. Resident opens Fixo as a guest.
 2. Resident taps **Report** in the persistent bottom navigation.
 3. Resident takes a photo or selects one from the gallery.
-4. Pakka requests location permission and captures an approximate location when granted.
+4. Fixo requests location permission and captures an approximate location when granted.
 5. AI suggests category, bilingual title, description, and severity.
-6. Pakka checks for a likely nearby duplicate.
+6. Fixo checks for a likely nearby duplicate.
 7. Resident reviews and may edit every suggested field.
 8. Resident optionally enters a phone number or email for updates.
 9. Resident submits the report.
-10. Pakka creates a public issue and saves it under **My reports**.
+10. Fixo creates a public issue and saves it under **My reports**.
 
 ### 6.2 Support an existing issue
 
 1. Resident selects an issue from the map, list, or duplicate suggestion.
 2. Resident taps **I see this too**.
-3. Pakka increments the public support count and records the issue under the resident's local activity.
+3. Fixo increments the public support count and records the issue under the resident's local activity.
 4. Only an alias or anonymous resident label may be displayed publicly.
 
 ### 6.3 Track progress
 
 1. Resident opens an issue.
-2. Pakka displays its current state and chronological proof trail.
+2. Fixo displays its current state and chronological proof trail.
 3. Resident can see the assigned department, responsible role, expected response window, and escalation contact.
 4. New status events preserve earlier events rather than replacing them.
 
@@ -139,7 +139,7 @@ Public participation counts should not require public personal identities. Conta
 2. Issue enters **Awaiting resident confirmation**.
 3. Resident checks the physical location.
 4. Resident selects **Yes, it's fixed**.
-5. Pakka records the confirmation and moves the issue to **Confirmed fixed**.
+5. Fixo records the confirmation and moves the issue to **Confirmed fixed**.
 6. Resident may generate a shareable Proof Keeper story card.
 
 ### 6.5 Contest an incorrect fix
@@ -147,7 +147,7 @@ Public participation counts should not require public personal identities. Conta
 1. Resident opens an issue awaiting confirmation.
 2. Resident selects **No, still broken**.
 3. Resident supplies a current photograph.
-4. Pakka appends the new evidence to the same public issue.
+4. Fixo appends the new evidence to the same public issue.
 5. Status changes to **Contested** and the case is reopened.
 6. Existing supporters and the complete history remain intact.
 
@@ -238,7 +238,7 @@ Contested
 
 - Recognition is awarded after a confirmed fix, not after filing a report.
 - Generate a 1080 × 1920 story card suitable for social sharing.
-- Include the ward, verified outcome count, award name, and Pakka URL.
+- Include the ward, verified outcome count, award name, and Fixo URL.
 - Exclude reporter names, contact details, and precise issue locations.
 - Use the Web Share API when supported.
 - Provide download and copy-link fallbacks.
@@ -277,12 +277,12 @@ Contested
 
 ## 9. Experience and design requirements
 
-Pakka uses the **Civic Signal** visual language on top of the governed design system in `/design-system`.
+Fixo uses the **Civic Signal** visual language on top of the governed design system in `/design-system`.
 
 - Tokens are the source of truth: primitives → semantic tokens → component tokens → components → patterns → screens.
-- Mobile-first with a persistent three-item bottom navigation.
+- Mobile-first with a persistent floating bottom dock: Nearby, My reports, and Report.
 - Map-first nearby screen: interactive map plus a results sheet with collapsed / medium / expanded snaps.
-- Infrastructure blue for primary actions and navigation.
+- Signal violet (`#7313F5`) for primary actions and navigation.
 - Reflective yellow for evidence and resident checkpoints.
 - Safety orange for contested, overdue, or destructive states.
 - Repair green only for verified success.
@@ -360,7 +360,7 @@ Volume of filed reports alone is not a success metric because it can reward dupl
 
 - **Frontend:** Next.js, React, TypeScript.
 - **Mobile components:** Ant Design Mobile.
-- **Mapping:** Leaflet with OpenStreetMap tiles.
+- **Mapping:** Leaflet overlays on a styled Google Maps basemap.
 - **Localization:** Curated English/Hindi dictionaries.
 - **AI:** OpenAI Responses API with image input and structured JSON output in server-capable deployments.
 - **Persistence foundation:** Supabase Postgres, Storage, and row-level security schema.

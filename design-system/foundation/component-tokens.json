@@ -26,7 +26,8 @@
     "handleHeight": "4px",
     "backdrop": "rgba(17, 24, 39, 0.40)",
     "padding": "{space.5}",
-    "collapsed": "208px"
+    "collapsed": "84px",
+    "selected": "188px"
   },
   "input": {
     "height": "48px",
@@ -34,11 +35,12 @@
     "paddingX": "{space.3}"
   },
   "marker": {
-    "size": "52px",
-    "sizeSelected": "96px",
-    "radius": "{radius.16}",
+    "size": "36px",
+    "sizeSelected": "44px",
+    "radius": "{radius.full}",
     "border": "3px",
-    "labelWidth": "96px"
+    "clusterMin": "40px",
+    "clusterMax": "52px"
   },
   "carousel": {
     "height": "192px",

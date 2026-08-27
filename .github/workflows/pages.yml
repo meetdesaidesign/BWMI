@@ -1,4 +1,4 @@
-name: Deploy Pakka to GitHub Pages
+name: Deploy Fixo to GitHub Pages
 
 on:
   push:
@@ -23,6 +23,7 @@ jobs:
       GITHUB_PAGES: "true"
       NEXT_PUBLIC_BASE_PATH: /BWMI
       NEXT_PUBLIC_STATIC_DEMO: "true"
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,7 +32,7 @@ jobs:
           cache: npm
       - run: npm ci --legacy-peer-deps
       - name: Exclude server-only API route from static export
-        run: mv app/api/analyze/route.ts /tmp/pakka-api-route.ts
+        run: mv app/api/analyze/route.ts /tmp/fixo-api-route.ts
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

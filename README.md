@@ -1,4 +1,6 @@
-# Pakka
+# Fixo
+
+<img src="public/brand/fixo-mark-purple.svg" alt="Fixo" width="72" height="72">
 
 A mobile-first civic reporting prototype built around one rule: a repair is not finished until a resident confirms it.
 
@@ -27,6 +29,7 @@ All ward, official, contact, issue, and performance data is fictional and labell
 
 - `OPENAI_API_KEY`: enables real vision extraction.
 - `OPENAI_MODEL`: defaults to `gpt-5.4-mini`.
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`: loads the styled Google basemap. Restrict the key to localhost and the GitHub Pages origin. Without it, Nearby falls back to quiet OpenStreetMap tiles.
 - Supabase variables are reserved for the persistence phase after the self-contained hackathon demo.
 
 ## Checks

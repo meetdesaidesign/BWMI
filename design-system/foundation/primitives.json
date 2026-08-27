@@ -15,11 +15,11 @@
       "950": "#111827"
     },
     "brand": {
-      "50": "#E8EEFF",
-      "400": "#3B6AE6",
-      "500": "#1747D1",
-      "600": "#0D2F94",
-      "700": "#0A246E"
+      "50": "#F5EDFF",
+      "400": "#954CF7",
+      "500": "#7313F5",
+      "600": "#5505C1",
+      "700": "#46059F"
     },
     "evidence": {
       "300": "#FFF1A8",
@@ -65,7 +65,7 @@
     "full": "9999px"
   },
   "fontFamily": {
-    "sans": "\"Manrope\", \"Noto Sans Devanagari\", system-ui, sans-serif"
+    "sans": "\"Manrope\", \"Noto Sans Devanagari\", \"Noto Sans Kannada\", system-ui, sans-serif"
   },
   "fontSize": {
     "12": "12px",
@@ -79,6 +79,7 @@
   },
   "fontWeight": {
     "regular": "400",
+    "medium": "500",
     "semibold": "600",
     "bold": "700"
   },

@@ -1,5 +1,5 @@
 {
-  "name": "pakka-civic",
+  "name": "fixo-civic",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -11,9 +11,11 @@
     "tokens": "node scripts/generate-tokens.mjs"
   },
   "dependencies": {
+    "@googlemaps/js-api-loader": "^2.1.1",
     "@supabase/supabase-js": "^2.57.4",
     "antd-mobile": "^5.42.3",
     "leaflet": "^1.9.4",
+    "leaflet.gridlayer.googlemutant": "^0.16.0",
     "lucide-react": "^0.468.0",
     "next": "^15.5.2",
     "next-intl": "^4.3.5",
@@ -24,6 +26,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@types/google.maps": "^3.66.0",
     "@types/leaflet": "^1.9.20",
     "@types/node": "^22.18.0",
     "@types/react": "^19.1.12",

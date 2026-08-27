@@ -10,7 +10,12 @@
     "min": "44px"
   },
   "nav": {
-    "height": "72px"
+    "height": "64px",
+    "heightLandscape": "56px",
+    "inset": "{space.3}",
+    "insetX": "{space.4}",
+    "gap": "{space.3}",
+    "shadow": "{shadow.1}"
   },
   "demo": {
     "frameWidth": "430px",

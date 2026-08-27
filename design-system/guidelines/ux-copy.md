@@ -6,7 +6,7 @@ Follow this file as the source of truth for every user-facing string. Prefer sim
 
 **Priority:** Accuracy > clarity > brevity > personality. Never shorten a sentence so much that the user loses an important consequence or instruction.
 
-Version 1.0 · Mobile-first web · Adapted from the general-public UX copy guidelines for Pakka.
+Version 1.0 · Mobile-first web · Adapted from the general-public UX copy guidelines for Fixo.
 
 ## How to use this guide
 
@@ -73,13 +73,13 @@ Choose one public-facing word for each concept and use it everywhere.
 | Status | Current state of the report. |
 | Team | Public-facing default for the responsible operating group. Use a department name only if that identity matters. |
 | Resolved | The team says the issue has been fixed. |
-| Confirmed | A resident has checked the location and agreed the issue is fixed. Pakka-specific; do not collapse into Closed. |
+| Confirmed | A resident has checked the location and agreed the issue is fixed. Fixo-specific; do not collapse into Closed. |
 | Reopen | User action when the issue still exists after the team marked it resolved. |
 | I see this too | Public action for supporting an existing report. Not like, upvote, or back. |
 
 **Words to avoid unless legally required:** grievance · lodge · furnish · concerned authority · requisite · facilitate · aforementioned · pertaining to · inconvenience caused · kindly · proceed further · initiate action · redressal · proof trail (in UI) · ticket · geolocation
 
-### Pakka status labels
+### Fixo status labels
 
 Statuses must describe a real operational state. These map to `IssueStatus` in code:
 
@@ -102,7 +102,7 @@ Write the clearest version, then shorten without losing meaning. Truncation is a
 
 | Element | Target | Rule |
 | --- | --- | --- |
-| Screen title | 1–4 words | Name the place or task: “Report an issue”. |
+| Screen title | 1–4 words | Name the place or task: “Report a problem”. |
 | Section heading | 2–6 words | Describe the group: “Add details”. |
 | Button | 1–3 words | Verb-led when possible: “Submit report”. |
 | Field label | 1–4 words | Use the noun: “Mobile number”. |
@@ -118,7 +118,7 @@ Write the clearest version, then shorten without losing meaning. Truncation is a
 - Use the object when ambiguity exists: “Delete photo”, not “Delete”.
 - Do not use “OK” when a meaningful action label is available.
 - Do not use “Yes / No” for confirmations. Repeat the action: “It’s fixed” / “Still broken”.
-- Navigation labels are nouns or destinations: Map/Nearby, Report, My reports.
+- Navigation labels are destinations or a short action: Nearby, Report, My reports.
 - Label the language control “Language”. Show each language in its own script. Changing language must not reset form progress.
 
 ## Forms
@@ -135,7 +135,7 @@ Write the clearest version, then shorten without losing meaning. Truncation is a
 
 **Loading:** present participles — “Uploading photo...”, “Finding your location...”. No fake percentages.
 
-**Empty:** what is empty and what the user can do. Not an error. “No reports yet. Report an issue to see it here.”
+**Empty:** what is empty and what the user can do. Not an error. “No reports yet. Report a problem to see it here.”
 
 **Success:** confirm the outcome and give the next useful step. Avoid “successfully”. Never say “submitted” until the report has been accepted.
 

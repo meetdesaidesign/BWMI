@@ -3,3 +3,20 @@ export const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 export function assetPath(path: string) {
   return `${basePath}${path.startsWith("/") ? path : `/${path}`}`;
 }
+
+export const portraits = {
+  resident: "/images/resident-avatar.png",
+} as const;
+
+export const brand = {
+  markPurple: "/brand/fixo-mark-purple.svg",
+  markBlack: "/brand/fixo-mark-black.svg",
+  markWhite: "/brand/fixo-mark-white.svg",
+  logoHorizontal: "/brand/fixo-logo-horizontal.svg",
+  logoHorizontalPng: "/brand/fixo-logo-horizontal.png",
+  appIcon: "/brand/fixo-app-icon.svg",
+  faviconLight: "/brand/favicon-light.svg",
+  faviconDark: "/brand/favicon-dark.svg",
+  icon192: "/brand/icon-192.png",
+  icon512: "/brand/icon-512.png",
+} as const;
