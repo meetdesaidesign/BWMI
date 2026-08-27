@@ -9,20 +9,22 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Toast } from "antd-mobile";
-import { formatCopy, getCopy, getStatusLabel, localizedField } from "@/lib/i18n";
+import { formatCopy, getCategoryLabel, getCopy, getStatusLabel, localizedField } from "@/lib/i18n";
 import { LOCALE_META, resolveInitialLocale, writeStoredLocale } from "@/lib/locale";
 import { seedIssues, WARD_CENTER } from "@/lib/seed";
-import { areaContext } from "@/lib/authority";
-import { locateInWard } from "@/lib/geo";
+import { areaContext, authorityForCategory, officerDisplayName, resolveIssueAuthority } from "@/lib/authority";
+import { composeEscalationPost, escalationHandles, postIntentUrl } from "@/lib/share";
+import { locateInWard, namedPlace } from "@/lib/geo";
 import { assetPath } from "@/lib/assets";
 import { LOCATION_ACCURACY_LIMIT_M, PHOTO_MIN_EDGE_PX } from "@/lib/config";
 import { clearDraft, readDraft, writeDraft } from "@/lib/draft";
-import type { AIExtraction, AnalysisStatus, Category, Issue, Locale, LocationFix, PhotoIssue } from "@/lib/types";
+import type { AIExtraction, AnalysisStatus, Authority, Category, Issue, Locale, LocationFix, PhotoIssue } from "@/lib/types";
 import { StoryCard } from "./story-card";
 import { ProfileAvatar } from "./profile-avatar";
 import { ProfileSheet } from "./profile-sheet";
 import { CategoryIcon } from "./category-icon";
 import { NearbyScreen, type NearbyScreenHandle } from "./nearby-screen";
+import { ProblemCard } from "./problem-card";
 import { LanguageSheet } from "./language-sheet";
 import { BottomNavigation } from "./bottom-navigation";
 import { TopBar } from "./top-bar";
@@ -295,10 +297,38 @@ export function FixoApp() {
     Toast.show({ content: t.photoRemoved, position: "bottom" });
   };
 
-  const loadDemoPhoto = async () => {
-    const response = await fetch(assetPath("/images/demo-pothole.jpg"));
-    const blob = await response.blob();
-    readFile(new File([blob], "demo-pothole.jpg", { type: "image/jpeg" }));
+  const continueAsGuest = async () => {
+    if (advancing.current) return;
+    advancing.current = true;
+    try {
+      const response = await fetch(assetPath("/images/demo-pothole.jpg"));
+      if (!response.ok) throw new Error("sample missing");
+      const blob = await response.blob();
+      const url = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("read failed"));
+        reader.readAsDataURL(new File([blob], "demo-pothole.jpg", { type: "image/jpeg" }));
+      });
+      setPhoto(url);
+      setPhotoBase64(url);
+      setPhotoIssue("none");
+      if (location.status !== "ready" && location.status !== "approximate") {
+        setLocation({
+          status: "ready",
+          point: WARD_CENTER,
+          accuracyM: 35,
+          blocked: false,
+          manual: false,
+        });
+      }
+      void runAnalysis(url);
+      navigate("analyzing");
+    } catch {
+      Toast.show({ content: t.guestPhotoFailed, position: "bottom" });
+    } finally {
+      window.setTimeout(() => { advancing.current = false; }, 500);
+    }
   };
 
   const resolveLocation = () => {
@@ -315,7 +345,11 @@ export function FixoApp() {
           manual: false,
         });
       },
-      (error) => setLocation((fix) => ({ ...fix, status: "unavailable", blocked: error.code === error.PERMISSION_DENIED })),
+      (error) => setLocation((fix) => (
+        fix.status === "ready" || fix.status === "approximate"
+          ? fix
+          : { ...fix, status: "unavailable", blocked: error.code === error.PERMISSION_DENIED }
+      )),
       { timeout: 8000, enableHighAccuracy: true },
     );
   };
@@ -405,13 +439,21 @@ export function FixoApp() {
     if (!extraction) return;
     const now = new Date().toISOString();
     const reportPoint = location.point ?? [WARD_CENTER[0] - 0.0004, WARD_CENTER[1] - 0.0007];
+    const id = `FX-14${40 + issues.length}`;
+    /* Category routing resolves immediately, so the resident leaves the flow
+       knowing which desk and which officer now holds the report. */
+    const owner = authorityForCategory(extraction.category, id);
+    const assignedTo = (loc: Locale) => {
+      const officer = officerDisplayName(owner, loc);
+      return officer ? `${owner.roleName[loc]} · ${officer}` : owner.roleName[loc];
+    };
     const newIssue: Issue = {
-      id: `FX-14${40 + issues.length}`, category: extraction.category,       titleEn: extraction.title_en, titleHi: extraction.title_hi, titleKn: extraction.title_kn || extraction.title_en,
-      descriptionEn: extraction.description_en, descriptionHi: extraction.description_hi, descriptionKn: extraction.description_kn || extraction.description_en, address: `Near your current location · ${t.locationArea}`, lat: reportPoint[0], lng: reportPoint[1],
+      id, category: extraction.category,       titleEn: extraction.title_en, titleHi: extraction.title_hi, titleKn: extraction.title_kn || extraction.title_en,
+      descriptionEn: extraction.description_en, descriptionHi: extraction.description_hi, descriptionKn: extraction.description_kn || extraction.description_en, address: namedPlace(reportPoint[0], reportPoint[1], locale, t.locationArea), lat: reportPoint[0], lng: reportPoint[1],
       image: photo ?? assetPath("/images/pothole-ambedkar.jpg"), supporters: 1, aliases: ["You"], status: "reported", severity: extraction.severity,
       reportedAgoEn: "Just now", reportedAgoHi: "अभी", reportedAgoKn: "ಈಗಷ್ಟೇ", reportedAt: now, updatedAt: now,
-      departmentEn: "Finding the right team", departmentHi: "सही टीम ढूँढ रहे हैं", departmentKn: "ಸರಿಯಾದ ತಂಡ ಹುಡುಕುತ್ತಿದ್ದೇವೆ", roleEn: "Ward control room", roleHi: "वार्ड नियंत्रण कक्ष", roleKn: "ವಾರ್ಡ್ ನಿಯಂತ್ರಣ ಕೋಣೆ",
-      escalationEn: "Ward office · 1800-14-0014", escalationHi: "वार्ड कार्यालय · 1800-14-0014", escalationKn: "ವಾರ್ಡ್ ಕಚೇರಿ · 1800-14-0014", expectedEn: "Update after routing", expectedHi: "रूटिंग के बाद अपडेट", expectedKn: "ರೂಟಿಂಗ್ ನಂತರ ಅಪ್‌ಡೇಟ್", mine: true, routingPending: true, trust: [],
+      departmentEn: owner.departmentName.en, departmentHi: owner.departmentName.hi, departmentKn: owner.departmentName.kn, roleEn: assignedTo("en"), roleHi: assignedTo("hi"), roleKn: assignedTo("kn"),
+      escalationEn: `${owner.wardOffice.en} · ${owner.officialContact}`, escalationHi: `${owner.wardOffice.hi} · ${owner.officialContact}`, escalationKn: `${owner.wardOffice.kn} · ${owner.officialContact}`, expectedEn: "Update within 3 working days", expectedHi: "3 कार्यदिवस में अपडेट", expectedKn: "3 ಕೆಲಸದ ದಿನಗಳಲ್ಲಿ ಅಪ್‌ಡೇಟ್", mine: true, routingPending: false, trust: [],
       timeline: [{ status: "reported", labelEn: "Submitted", labelHi: "जमा हुई", labelKn: "ಸಲ್ಲಿಸಲಾಗಿದೆ", date: "Just now", noteEn: "Photo and approximate location added", noteHi: "फोटो और अनुमानित जगह जोड़ी गई", noteKn: "ಫೋಟೋ ಮತ್ತು ಅಂದಾಜು ಸ್ಥಳ ಸೇರಿಸಲಾಗಿದೆ" }],
     };
     setIssues((list) => [newIssue, ...list]); setSelectedId(newIssue.id);
@@ -468,8 +510,8 @@ export function FixoApp() {
                   </div>
                 )}
                 <div className="issue-list">
-                  {myIssues.map((issue) => <IssueCard key={issue.id} issue={issue} locale={locale} t={t} selected={false} onClick={() => chooseIssue(issue)} />)}
-                  {backedIssues.map((issue) => <IssueCard key={`backed-${issue.id}`} issue={issue} locale={locale} t={t} selected={false} onClick={() => chooseIssue(issue)} />)}
+                  {myIssues.map((issue) => <ProblemCard key={issue.id} issue={issue} locale={locale} t={t} onClick={() => chooseIssue(issue)} />)}
+                  {backedIssues.map((issue) => <ProblemCard key={`backed-${issue.id}`} issue={issue} locale={locale} t={t} onClick={() => chooseIssue(issue)} />)}
                 </div>
               </section>
             </div>
@@ -492,23 +534,25 @@ export function FixoApp() {
           {screen === "capture" && (
             <CaptureScreen
               t={t}
+              locale={locale}
               photo={photo}
               photoIssue={photoIssue}
               analysis={analysis}
               location={location}
+              routedTo={areaContext.authority.departmentName[locale]}
               offline={offline}
               onBack={closeReport}
               onFile={(file) => readFile(file)}
               onRemovePhoto={removePhoto}
-              onSamplePhoto={loadDemoPhoto}
+              onContinueAsGuest={continueAsGuest}
               onLocationAction={onLocationAction}
               onRetryAnalysis={retryAnalysis}
               onContinue={openReview}
             />
           )}
           {screen === "analyzing" && <AnalyzingScreen t={t} photo={photo} />}
-          {screen === "review" && extraction && <ReviewScreen locale={locale} t={t} extraction={extraction} setExtraction={setExtraction} photo={photo} locationState={location.status} contact={contact} setContact={setContact} duplicate={issues.find((i) => i.id === extraction.duplicate_id)} different={different} setDifferent={setDifferent} onBack={() => navigate("capture")} onBackExisting={(i) => { backIssue(i.id); setSelectedId(i.id); navigate("issue"); }} onSubmit={submitReport} />}
-          {screen === "success" && <ResultScreen icon="sent" eyebrow={t.submittedEyebrow} title={t.submitted} body={t.submittedHelp} meta={<p className="result-authority"><Building2 size={16} aria-hidden />{areaContext.authority.organizationName[locale]} · {t.routingInProgress}</p>} primary={t.viewReport} onPrimary={() => navigate("issue")} />}
+          {screen === "review" && extraction && <ReviewScreen locale={locale} t={t} extraction={extraction} setExtraction={setExtraction} photo={photo} location={location} contact={contact} setContact={setContact} duplicate={issues.find((i) => i.id === extraction.duplicate_id)} different={different} setDifferent={setDifferent} onBack={() => navigate("capture")} onBackExisting={(i) => { backIssue(i.id); setSelectedId(i.id); navigate("issue"); }} onSubmit={submitReport} />}
+          {screen === "success" && <SubmittedScreen issue={selected} locale={locale} t={t} onViewReport={() => navigate("issue")} />}
           {screen === "contest" && <ContestScreen t={t} photo={contestPhoto} fileRef={contestRef} onFile={(f) => readFile(f, true)} onBack={() => navigate("issue")} onSubmit={contestFix} />}
           {screen === "confirmed" && <ResultScreen icon="confirmed" eyebrow={t.confirmedEyebrow} title={t.confirmedTitle} body={t.confirmedHelp} primary={t.makeCard} onPrimary={() => navigate("story")} secondary={t.viewReport} onSecondary={() => navigate("issue")} />}
           {screen === "story" && <div className="full-page"><TopBar title={t.shareCardTitle} onBack={() => navigate("confirmed")} /><div className="story-page"><h1 className="type-heading-lg">{t.shareCardTitle}</h1><p className="type-body-md">{t.shareCardHelp}</p><StoryCard locale={locale} t={t} /></div></div>}
@@ -546,25 +590,6 @@ export function FixoApp() {
   );
 }
 
-function IssueCard({ issue, locale, t, selected, onClick }: { issue: Issue; locale: Locale; t: ReturnType<typeof getCopy>; selected: boolean; onClick: () => void }) {
-  return (
-    <button className={`issue-card ${selected ? "is-selected" : ""}`} data-issue-id={issue.id} onClick={onClick} aria-pressed={selected}>
-      <span className="issue-card-media">
-        {issue.image ? <img src={issue.image} alt="" /> : <CategoryIcon category={issue.category} size={28} />}
-      </span>
-      <span className="issue-card-body">
-        <span className="issue-card-meta">
-          <CategoryIcon category={issue.category} size={14} />
-          <span>{issue.category}</span>
-          <StatusPill issue={issue} locale={locale} />
-        </span>
-        <strong className="issue-card-title type-heading-sm">{local(issue, locale, "title")}</strong>
-        <span className="issue-card-support type-caption">{issue.supporters} {t.supporters}</span>
-      </span>
-    </button>
-  );
-}
-
 function IssueDetail({ issue, locale, t, backed, onBack, onBackIssue, onConfirm, onContest }: { issue: Issue; locale: Locale; t: ReturnType<typeof getCopy>; backed: boolean; onBack: () => void; onBackIssue: () => void; onConfirm: () => void; onContest: () => void }) {
   return <div className="full-page issue-detail">
     <TopBar title={issue.id} onBack={onBack} action={<StatusPill issue={issue} locale={locale} />} />
@@ -589,18 +614,112 @@ function IssueDetail({ issue, locale, t, backed, onBack, onBackIssue, onConfirm,
   </div>;
 }
 
+/**
+ * Duplicate match — deliberately small. Supporting an existing report is a
+ * one-tap side road off step 2, not a decision that deserves half the screen,
+ * so this stays a single strip: what matched, how many back it, two actions.
+ */
+function DuplicateNotice({ duplicate, locale, t, onBackExisting, onDismiss }: { duplicate: Issue; locale: Locale; t: ReturnType<typeof getCopy>; onBackExisting: (i: Issue) => void; onDismiss: () => void }) {
+  return (
+    <aside className="duplicate-notice" aria-label={t.duplicateAria}>
+      <p className="duplicate-notice-label"><Users size={13} aria-hidden />{t.duplicate}</p>
+      <div className="duplicate-notice-match">
+        {duplicate.image
+          ? <img className="duplicate-notice-thumb" src={duplicate.image} alt="" />
+          : <span className="duplicate-notice-thumb is-icon"><CategoryIcon category={duplicate.category} size={18} /></span>}
+        <span className="duplicate-notice-body">
+          <strong className="type-label-md">{local(duplicate, locale, "title")}</strong>
+          <span className="type-caption">{duplicate.supporters} {t.supporters} · {duplicate.address}</span>
+        </span>
+      </div>
+      <div className="duplicate-notice-actions">
+        <button type="button" className="duplicate-notice-support" onClick={() => onBackExisting(duplicate)}>{t.seeToo}</button>
+        <button type="button" className="duplicate-notice-dismiss" onClick={onDismiss}>{t.different}</button>
+      </div>
+    </aside>
+  );
+}
+
+function XLogo({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden focusable="false">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+function initialsOf(name: string) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => Array.from(part)[0]).join("");
+}
+
+/** Who owns this report, named where the roster names someone. */
+function AssigneeCard({ authority, locale, t }: { authority: Authority; locale: Locale; t: ReturnType<typeof getCopy> }) {
+  const officer = officerDisplayName(authority, locale);
+  return (
+    <section className="assignee-card">
+      <p className="eyebrow">{t.assignedEyebrow}</p>
+      <div className="assignee-row">
+        <span className={`assignee-avatar${officer ? "" : " is-office"}`} aria-hidden>
+          {officer ? initialsOf(officer) : <Building2 size={19} />}
+        </span>
+        <span className="assignee-body">
+          <strong className="type-label-md">
+            {officer ?? authority.roleName[locale]}
+            {officer && authority.officerVerified ? <ShieldCheck size={14} className="assignee-verified" aria-label={t.assignedVerified} /> : null}
+          </strong>
+          <span className="type-caption">{officer ? authority.roleName[locale] : t.assignedNoOfficer}</span>
+          <span className="type-caption">{authority.departmentName[locale]} · {authority.wardOffice[locale]}</span>
+        </span>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The escalation path residents already use — a public post tagging the office —
+ * pre-written, so it costs one tap instead of an evening of drafting.
+ */
+function EscalateCard({ post, t }: { post: string; t: ReturnType<typeof getCopy> }) {
+  return (
+    <section className="escalate-card">
+      <p className="eyebrow">{t.escalateEyebrow}</p>
+      <p className="escalate-draft">{post}</p>
+      <a
+        className="escalate-post"
+        href={postIntentUrl(post)}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={t.shareOnXAria}
+      >
+        <XLogo size={15} />{t.shareOnX}
+      </a>
+      <p className="escalate-note type-caption">{t.escalateDemoNote}</p>
+    </section>
+  );
+}
+
 function AnalyzingScreen({ t, photo }: { t: ReturnType<typeof getCopy>; photo: string | null }) {
   return <div className="analysis-screen">{photo && <img src={photo} alt="" />}<div className="scan-line" /><div className="analysis-card"><span className="ai-orbit"><Sparkles size={24} /></span><h1 className="type-heading-lg">{t.aiReading}</h1><p className="type-body-md">{t.aiHelp}</p><div className="analysis-steps"><span className="done"><Check size={13} />{t.analysisPhoto}</span><span className="active"><span className="spinner" />{t.analysisCategory}</span><span>{t.analysisWriting}</span></div></div></div>;
 }
 
-function ReviewScreen({ locale, t, extraction, setExtraction, photo, locationState, contact, setContact, duplicate, different, setDifferent, onBack, onBackExisting, onSubmit }: { locale: Locale; t: ReturnType<typeof getCopy>; extraction: AIExtraction; setExtraction: (e: AIExtraction) => void; photo: string | null; locationState: string; contact: string; setContact: (v: string) => void; duplicate?: Issue; different: boolean; setDifferent: (v: boolean) => void; onBack: () => void; onBackExisting: (i: Issue) => void; onSubmit: () => void }) {
-  const categories: Category[] = ["Roads", "Waste", "Water", "Lighting", "Drainage"];
+function ReviewScreen({ locale, t, extraction, setExtraction, photo, location, contact, setContact, duplicate, different, setDifferent, onBack, onBackExisting, onSubmit }: { locale: Locale; t: ReturnType<typeof getCopy>; extraction: AIExtraction; setExtraction: (e: AIExtraction) => void; photo: string | null; location: LocationFix; contact: string; setContact: (v: string) => void; duplicate?: Issue; different: boolean; setDifferent: (v: boolean) => void; onBack: () => void; onBackExisting: (i: Issue) => void; onSubmit: () => void }) {
+  const categories: Category[] = ["Roads", "Waste", "Water", "Lighting", "Drainage", "Other"];
   const titleKey = locale === "hi" ? "title_hi" : locale === "kn" && extraction.title_kn ? "title_kn" : "title_en";
   const descKey = locale === "hi" ? "description_hi" : locale === "kn" && extraction.description_kn ? "description_kn" : "description_en";
-  return <div className="full-page review-page"><TopBar title={t.review} onBack={onBack} /><div className="review-evidence">{photo && <img src={photo} alt={t.photoAlt} />}<div><span><MapPin size={14} />{locationState === "ready" ? t.locationReady : t.locationApprox}</span><small><Sparkles size={12} />{t.aiSuggestion}</small></div></div>
+  const place = location.point
+    ? namedPlace(location.point[0], location.point[1], locale, t.locationArea)
+    : t.locationArea;
+  const accuracy = location.accuracyM;
+  const metres = accuracy === null ? null : accuracy >= 100 ? Math.round(accuracy / 10) * 10 : Math.round(accuracy);
+  const placeLine = location.status === "approximate"
+    ? formatCopy(t.locationApprox, { place })
+    : metres === null
+      ? place
+      : formatCopy(t.locationReady, { place, m: metres });
+  return <div className="full-page review-page"><TopBar title={t.review} onBack={onBack} /><div className="review-evidence">{photo && <img src={photo} alt={t.photoAlt} />}<div><span><MapPin size={14} />{placeLine}</span></div></div>
     <div className="review-form">
-      {duplicate && !different && <div className="duplicate-card"><p className="eyebrow">{t.duplicate}</p><h3 className="type-heading-sm">{local(duplicate, locale, "title")}</h3><p className="type-caption">{t.duplicateHelp}</p><p className="type-caption">{duplicate.supporters} {t.supporters} · {duplicate.address}</p><button type="button" onClick={() => onBackExisting(duplicate)}><Users size={17} />{t.seeToo}</button><button type="button" className="text-button" onClick={() => setDifferent(true)}>{t.different}</button></div>}
-      <label><span>{t.category}</span><div className="category-chips">{categories.map((category) => <button type="button" key={category} className={extraction.category === category ? "selected" : ""} aria-pressed={extraction.category === category} onClick={() => setExtraction({ ...extraction, category })}><CategoryIcon category={category} size={16} /> {category}</button>)}</div></label>
+      {duplicate && !different && <DuplicateNotice duplicate={duplicate} locale={locale} t={t} onBackExisting={onBackExisting} onDismiss={() => setDifferent(true)} />}
+      <label><span>{t.category}</span><div className="category-chips">{categories.map((category) => <button type="button" key={category} className={extraction.category === category ? "selected" : ""} aria-pressed={extraction.category === category} onClick={() => setExtraction({ ...extraction, category })}><CategoryIcon category={category} size={16} /> {getCategoryLabel(category, locale)}</button>)}</div></label>
       <label><span>{t.title}</span><input value={extraction[titleKey]} onChange={(e) => setExtraction({ ...extraction, [titleKey]: e.target.value })} /></label>
       <label><span>{t.description}</span><textarea rows={3} value={extraction[descKey]} onChange={(e) => setExtraction({ ...extraction, [descKey]: e.target.value })} /></label>
       <label><span>{t.contact}</span><input type="text" inputMode="email" autoComplete="email" placeholder={t.contactPlaceholder} value={contact} onChange={(e) => setContact(e.target.value)} /><small><ShieldCheck size={13} />{t.contactHelp} {t.anonymous}</small></label>
@@ -611,6 +730,40 @@ function ReviewScreen({ locale, t, extraction, setExtraction, photo, locationSta
 
 function ContestScreen({ t, photo, fileRef, onFile, onBack, onSubmit }: { t: ReturnType<typeof getCopy>; photo: string | null; fileRef: React.RefObject<HTMLInputElement | null>; onFile: (f?: File) => void; onBack: () => void; onSubmit: () => void }) {
   return <div className="full-page contest-page"><TopBar title={t.reopen} onBack={onBack} /><div className="capture-copy"><p className="eyebrow">{t.contestStep}</p><h1 className="type-heading-lg">{t.contestTitle}</h1><p className="type-body-md">{t.contestHelp}</p></div><input ref={fileRef} hidden type="file" accept="image/*" capture="environment" onChange={(e) => onFile(e.target.files?.[0])} /><button className={`contest-upload ${photo ? "has-photo" : ""}`} onClick={() => fileRef.current?.click()}>{photo ? <img src={photo} alt={t.photoAlt} /> : <><ImagePlus size={30} /><strong className="type-label-md">{t.camera}</strong><span className="type-caption">{t.upload}</span></>}</button><div className="contest-note"><ShieldCheck size={18} /><p className="type-caption">{t.contestNote}</p></div><div className="sticky-action"><Button block color="danger" size="large" className="primary-button danger-fill" disabled={!photo} onClick={onSubmit}>{t.reopen}<ArrowRight size={18} /></Button></div></div>;
+}
+
+/**
+ * Submitted — the moment a resident decides whether fixo is worth trusting. It
+ * answers "who has it now?" by name, and hands over the escalation post they
+ * would otherwise write themselves a fortnight later.
+ */
+function SubmittedScreen({ issue, locale, t, onViewReport }: { issue: Issue; locale: Locale; t: ReturnType<typeof getCopy>; onViewReport: () => void }) {
+  const authority = resolveIssueAuthority(issue);
+  const post = composeEscalationPost({
+    template: t.postTemplate,
+    hashtags: t.postHashtags,
+    title: local(issue, locale, "title"),
+    area: `${areaContext.ward[locale]} · ${areaContext.areaName[locale]}`,
+    id: issue.id,
+    handles: escalationHandles(authority, areaContext.representatives),
+  });
+
+  return (
+    <ResultScreen
+      icon="sent"
+      eyebrow={t.submittedEyebrow}
+      title={t.submitted}
+      body={t.submittedHelp}
+      meta={
+        <div className="submitted-detail">
+          <AssigneeCard authority={authority} locale={locale} t={t} />
+          <EscalateCard post={post} t={t} />
+        </div>
+      }
+      primary={t.viewReport}
+      onPrimary={onViewReport}
+    />
+  );
 }
 
 function ResultScreen({ icon, eyebrow, title, body, meta, primary, onPrimary, secondary, onSecondary }: { icon: "sent" | "confirmed"; eyebrow: string; title: string; body: string; meta?: React.ReactNode; primary: string; onPrimary: () => void; secondary?: string; onSecondary?: () => void }) {

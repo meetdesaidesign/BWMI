@@ -1,5 +1,46 @@
+import type { LText, Locale } from "./types";
+
 /** Jayanagar 4th Block, Bengaluru — compact enough for ward-level zoom. */
 export const WARD_CENTER: [number, number] = [12.9254, 77.5838];
+
+function L(en: string, hi: string, kn: string): LText {
+  return { en, hi, kn };
+}
+
+/**
+ * Named streets and landmarks inside the demo ward. GPS and the map pin
+ * resolve to the nearest of these so the report names a road, not only the area.
+ */
+const WARD_PLACES: { lat: number; lng: number; name: LText }[] = [
+  { lat: 12.9254, lng: 77.5838, name: L("36th Cross, 4th Block", "36वीं क्रॉस, चौथा ब्लॉक", "36ನೇ ಕ್ರಾಸ್, 4ನೇ ಬ್ಲಾಕ್") },
+  { lat: 12.9271, lng: 77.5811, name: L("4th Block Complex", "चौथा ब्लॉक कॉम्प्लेक्स", "4ನೇ ಬ್ಲಾಕ್ ಕಾಂಪ್ಲೆಕ್ಸ್") },
+  { lat: 12.9232, lng: 77.5857, name: L("9th Main, 4th T Block", "9वीं मेन, चौथा टी ब्लॉक", "9ನೇ ಮೇನ್, 4ನೇ ಟಿ ಬ್ಲಾಕ್") },
+  { lat: 12.9283, lng: 77.5863, name: L("Madhavan Park", "माधवन पार्क", "ಮಾಧವನ್ ಪಾರ್ಕ್") },
+  { lat: 12.9255, lng: 77.5802, name: L("Jayanagar Metro Gate 2", "जयनगर मेट्रो गेट 2", "ಜಯನಗರ ಮೆಟ್ರೋ ಗೇಟ್ 2") },
+  { lat: 12.9211, lng: 77.5818, name: L("32nd Cross", "32वीं क्रॉस", "32ನೇ ಕ್ರಾಸ್") },
+  { lat: 12.9278, lng: 77.5836, name: L("38th Cross", "38वीं क्रॉस", "38ನೇ ಕ್ರಾಸ್") },
+  { lat: 12.9250, lng: 77.5868, name: L("11th Main", "11वीं मेन", "11ನೇ ಮೇನ್") },
+  { lat: 12.9234, lng: 77.5832, name: L("34th Cross", "34वीं क्रॉस", "34ನೇ ಕ್ರಾಸ್") },
+  { lat: 12.9304, lng: 77.5842, name: L("South End Circle", "साउथ एंड सर्कल", "ಸೌತ್ ಎಂಡ್ ಸರ್ಕಲ್") },
+  { lat: 12.9196, lng: 77.5805, name: L("27th Cross", "27वीं क्रॉस", "27ನೇ ಕ್ರಾಸ್") },
+  { lat: 12.9260, lng: 77.5785, name: L("4th Main", "चौथी मेन", "4ನೇ ಮೇನ್") },
+];
+
+const PLACE_MATCH_M = 450;
+
+/** Nearest named street or landmark, or the area name if nothing is close. */
+export function namedPlace(lat: number, lng: number, locale: Locale, fallback: string) {
+  let nearest = WARD_PLACES[0];
+  let nearestM = Infinity;
+  for (const place of WARD_PLACES) {
+    const meters = distanceMeters(lat, lng, place.lat, place.lng);
+    if (meters < nearestM) {
+      nearest = place;
+      nearestM = meters;
+    }
+  }
+  return nearestM <= PLACE_MATCH_M ? nearest.name[locale] : fallback;
+}
 
 export interface MapBounds {
   north: number;

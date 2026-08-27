@@ -51,10 +51,21 @@
   },
   "overlay": {
     "scrim": "rgba(17, 24, 39, 0.40)",
-    "scrimStrong": "rgba(17, 24, 39, 0.60)"
+    "scrimStrong": "rgba(17, 24, 39, 0.60)",
+    "photo": "rgba(17, 24, 39, 0.92)"
   },
   "focus": {
     "ring": "rgba(115, 19, 245, 0.28)",
     "offset": "2px"
+  },
+  "category": {
+    "roads": "{color.category.roads}",
+    "waste": "{color.category.waste}",
+    "water": "{color.category.water}",
+    "lighting": "{color.category.lighting}",
+    "drainage": "{color.category.drainage}",
+    "traffic": "{color.category.traffic}",
+    "parks": "{color.category.parks}",
+    "other": "{color.category.other}"
   }
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { SlidersHorizontal } from "lucide-react";
 import { getCategoryLabel, getStatusGroupLabel, type getCopy } from "@/lib/i18n";
 import { advancedFilterCount } from "@/lib/filters";
 import type { FilterState, Locale } from "@/lib/types";
@@ -50,8 +51,15 @@ export function FilterBar({
       <button type="button" className={`filter-chip ${locationActive ? "is-active" : ""}`} aria-pressed={locationActive} onClick={() => onOpen("distance")}>
         {distanceLabel}
       </button>
-      <button type="button" className={`filter-chip ${moreCount ? "is-active" : ""}`} aria-pressed={moreCount > 0} onClick={() => onOpen("more")}>
-        {t.filterMore}
+      <button
+        type="button"
+        className={`filter-chip is-icon ${moreCount ? "is-active" : ""}`}
+        aria-pressed={moreCount > 0}
+        aria-label={t.filterMore}
+        title={t.filterMore}
+        onClick={() => onOpen("more")}
+      >
+        <SlidersHorizontal size={17} strokeWidth={2} aria-hidden />
         {moreCount > 0 ? <span className="filter-badge">{moreCount}</span> : null}
       </button>
     </div>

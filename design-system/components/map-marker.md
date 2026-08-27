@@ -1,6 +1,6 @@
 # Map marker
 
-**Purpose:** Show one civic issue on the ward map as an evidence photo, so the problem is recognizable before opening the record.
+**Purpose:** Show one civic issue on the ward map as an evidence photo, so the problem is recognizable before opening the record and cannot be mistaken for a basemap POI.
 
 **Anatomy:** media (evidence thumbnail) · support-count badge · title label under the card
 
@@ -8,9 +8,9 @@
 
 **States:** default, focus, selected
 
-**Tokens:** `marker.size`, `marker.sizeSelected`, `marker.radius`, `marker.border`, `marker.labelWidth`, `elevation.1–2`, `surface.primary` (card ring), `type.caption`
+**Tokens:** `marker.size`, `marker.sizeSelected`, `marker.radius`, `marker.radiusSelected`, `marker.border`, `marker.borderSelected`, `elevation.1–2`, `surface.primary` (card ring)
 
-**Sizing:** Default media 24px with 4px stroke; selected media 48px with 8px stroke. Corner radius 12px on the photo. Outer ring uses `surface.primary`. Whole control is the hit target and stays ≥44px.
+**Sizing:** Default media 30px with 3px stroke and 8px corners; selected media 48px with 4px stroke and 12px corners. Shape is a rounded square, never a circle. Outer ring uses `surface.primary`. Whole control is the hit target and stays ≥44px. Both states show the evidence photo.
 
 **Responsive:** Same sizes on all viewports. Do not shrink below `--touch-min`.
 
@@ -20,4 +20,4 @@
 
 **Content:** Locale title under the card. Support count as a tabular badge on the photo. Status color lives on the badge (brand / repair green / destructive), not on the card chrome.
 
-**Edge cases:** Missing image → neutral surface in the same slot, never collapse. Selected marker uses `elevation.2` and a stronger ring so it stays visible against the light basemap (EX-004). Overlapping photos: selected wins z-index.
+**Edge cases:** Missing image → category icon on the same rounded square, never collapse. Selected marker uses `elevation.2` and a stronger ring so it stays visible against the light basemap (EX-004). Overlapping photos: selected wins z-index.

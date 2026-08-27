@@ -2,7 +2,7 @@
 
 **Purpose:** Represent one canonical civic issue in a list or sheet so a resident can open it.
 
-**Anatomy:** media (evidence) · category · status · title · support/metadata
+**Anatomy:** media (evidence) · status · title · support/metadata
 
 **Variants:** default | selected
 

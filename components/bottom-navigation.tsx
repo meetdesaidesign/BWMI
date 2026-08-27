@@ -5,8 +5,12 @@ import type { getCopy } from "@/lib/i18n";
 
 export type BottomNavDestination = "around" | "reports";
 
-const iconProps = { size: 24, strokeWidth: 1.75, "aria-hidden": true as const };
+const iconProps = { size: 22, strokeWidth: 1.9, "aria-hidden": true as const };
 
+/**
+ * Three slots in one dock: the two destinations flank the report action so the
+ * primary create affordance sits under the thumb, centred on the bar.
+ */
 export function BottomNavigation({
   activeItem,
   onAroundYou,
@@ -43,6 +47,23 @@ export function BottomNavigation({
 
         <button
           type="button"
+          className={`bottom-nav-item bottom-nav-report${hint ? " is-hint" : ""}`}
+          aria-label={t.reportProblem}
+          aria-busy={busy || undefined}
+          disabled={busy}
+          onClick={onReport}
+        >
+          <span className="bottom-nav-report-badge">
+            {busy ? (
+              <LoaderCircle className="bottom-nav-spinner" size={26} strokeWidth={2.5} aria-hidden />
+            ) : (
+              <Plus size={28} strokeWidth={2.5} aria-hidden />
+            )}
+          </span>
+        </button>
+
+        <button
+          type="button"
           className={`bottom-nav-item${activeItem === "reports" ? " is-active" : ""}`}
           aria-current={activeItem === "reports" ? "page" : undefined}
           onClick={onMyReports}
@@ -53,17 +74,6 @@ export function BottomNavigation({
           <span className="bottom-nav-label">{t.reports}</span>
         </button>
       </div>
-
-      <button
-        type="button"
-        className={`bottom-nav-report${hint ? " is-hint" : ""}`}
-        aria-label={t.reportProblem}
-        aria-busy={busy || undefined}
-        disabled={busy}
-        onClick={onReport}
-      >
-        {busy ? <LoaderCircle className="bottom-nav-spinner" size={22} strokeWidth={2} aria-hidden /> : <Plus {...iconProps} />}
-      </button>
     </nav>
   );
 }
