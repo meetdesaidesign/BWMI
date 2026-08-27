@@ -1,0 +1,10 @@
+{
+  "version": "1.0.0",
+  "usage": {
+    "control": "{radius.12}",
+    "media": "{radius.20}",
+    "card": "{radius.24}",
+    "sheet": "{radius.28}",
+    "pill": "{radius.full}"
+  }
+}

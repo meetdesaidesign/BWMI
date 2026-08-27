@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "slots": {
+    "filterTile": { "size": "80px", "aspectRatio": "1:1", "safeArea": "12%" },
+    "emptyState": { "size": "184px", "aspectRatio": "1:1", "safeArea": "12%" },
+    "inlineDecorative": { "size": "40px", "aspectRatio": "1:1", "safeArea": "8%" }
+  },
+  "assets": [
+    { "id": "filter.roads", "type": "3d-illustration", "slot": "filterTile", "placeholder": true, "fallback": "icon-roads", "alt": "Roads" },
+    { "id": "filter.waste", "type": "3d-illustration", "slot": "filterTile", "placeholder": true, "fallback": "icon-waste", "alt": "Waste" },
+    { "id": "filter.water", "type": "3d-illustration", "slot": "filterTile", "placeholder": true, "fallback": "icon-water", "alt": "Water" },
+    { "id": "filter.lighting", "type": "3d-illustration", "slot": "filterTile", "placeholder": true, "fallback": "icon-lighting", "alt": "Lighting" },
+    { "id": "filter.drainage", "type": "3d-illustration", "slot": "filterTile", "placeholder": true, "fallback": "icon-drainage", "alt": "Drainage" },
+    { "id": "empty.nearby", "type": "3d-illustration", "slot": "emptyState", "placeholder": true, "fallback": "icon-map", "alt": "" }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "version": "1.0.0",
+  "text": {
+    "primary": "{color.gray.950}",
+    "secondary": "{color.gray.650}",
+    "tertiary": "{color.gray.500}",
+    "inverse": "{color.gray.0}",
+    "disabled": "{color.gray.400}",
+    "onBrand": "{color.gray.0}",
+    "onEvidence": "{color.evidence.700}",
+    "link": "{color.brand.500}"
+  },
+  "surface": {
+    "canvas": "{color.gray.50}",
+    "primary": "{color.gray.0}",
+    "secondary": "{color.gray.100}",
+    "elevated": "{color.gray.0}",
+    "brand": "{color.brand.500}",
+    "brandStrong": "{color.brand.600}",
+    "evidence": "{color.evidence.400}",
+    "overlay": "rgba(17, 24, 39, 0.40)"
+  },
+  "border": {
+    "subtle": "{color.gray.150}",
+    "default": "{color.gray.200}",
+    "strong": "{color.gray.300}",
+    "focus": "{color.brand.500}"
+  },
+  "action": {
+    "primary": "{color.brand.500}",
+    "primaryHover": "{color.brand.600}",
+    "secondary": "{color.gray.0}",
+    "destructive": "{color.danger.600}"
+  },
+  "feedback": {
+    "positive": "{color.success.500}",
+    "positiveSoft": "{color.success.100}",
+    "warning": "{color.warning.700}",
+    "warningSoft": "{color.warning.100}",
+    "negative": "{color.danger.500}",
+    "negativeSoft": "{color.danger.100}",
+    "info": "{color.brand.500}",
+    "infoSoft": "{color.brand.50}"
+  },
+  "icon": {
+    "primary": "{color.gray.950}",
+    "secondary": "{color.gray.650}",
+    "inverse": "{color.gray.0}",
+    "disabled": "{color.gray.400}",
+    "brand": "{color.brand.500}"
+  },
+  "overlay": {
+    "scrim": "rgba(17, 24, 39, 0.40)",
+    "scrimStrong": "rgba(17, 24, 39, 0.60)"
+  },
+  "focus": {
+    "ring": "rgba(23, 71, 209, 0.28)",
+    "offset": "2px"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0",
+  "page": {
+    "padding": "{space.5}",
+    "paddingLg": "{space.8}",
+    "sectionGap": "{space.8}",
+    "maxWidth": "430px"
+  },
+  "touch": {
+    "min": "44px"
+  },
+  "nav": {
+    "height": "72px"
+  },
+  "demo": {
+    "frameWidth": "430px",
+    "frameRadius": "28px"
+  }
+}

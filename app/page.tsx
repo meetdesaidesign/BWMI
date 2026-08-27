@@ -5,9 +5,9 @@ export default function Home() {
     <main className="demo-stage">
       <aside className="demo-note" aria-label="Demo information">
         <div className="demo-mark">P</div>
-        <p className="eyebrow">CIVIC PROTOTYPE · WARD 14</p>
-        <h1>Report it.<br />Track it.<br /><em>Confirm the fix.</em></h1>
-        <p>Pakka keeps a repair open until a resident says the work is actually done.</p>
+        <p className="eyebrow">Civic prototype · Ward 14</p>
+        <h1>Report an issue.<br />Track it.<br /><em>Confirm the fix.</em></h1>
+        <p>A repair stays open until a resident says the work is done.</p>
         <div className="demo-hint"><span>↗</span> Best experienced on mobile</div>
       </aside>
       <section className="phone-shell" aria-label="Pakka mobile application">

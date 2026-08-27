@@ -1,0 +1,54 @@
+{
+  "version": "1.0.0",
+  "card": {
+    "radius": "{radius.24}",
+    "padding": "{space.4}",
+    "gap": "{space.3}",
+    "shadow": "{shadow.0}",
+    "imageRadius": "{radius.20}",
+    "mediaSize": "88px"
+  },
+  "chip": {
+    "height": "44px",
+    "radius": "{radius.full}",
+    "paddingX": "{space.4}",
+    "border": "{border.default}"
+  },
+  "button": {
+    "height": "52px",
+    "radius": "{radius.12}",
+    "paddingX": "{space.5}",
+    "gap": "{space.2}"
+  },
+  "sheet": {
+    "radiusTop": "{radius.28}",
+    "handleWidth": "40px",
+    "handleHeight": "4px",
+    "backdrop": "rgba(17, 24, 39, 0.40)",
+    "padding": "{space.5}",
+    "collapsed": "208px"
+  },
+  "input": {
+    "height": "48px",
+    "radius": "{radius.12}",
+    "paddingX": "{space.3}"
+  },
+  "marker": {
+    "size": "52px",
+    "sizeSelected": "96px",
+    "radius": "{radius.16}",
+    "border": "3px",
+    "labelWidth": "96px"
+  },
+  "carousel": {
+    "height": "192px",
+    "cardWidth": "78%",
+    "gap": "{space.3}",
+    "peek": "11%"
+  },
+  "asset": {
+    "filterTile": "80px",
+    "emptyState": "184px",
+    "inline": "40px"
+  }
+}

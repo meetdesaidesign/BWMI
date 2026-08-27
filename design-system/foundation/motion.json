@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "motion": {
+    "instant": "{duration.instant}",
+    "fast": "{duration.fast}",
+    "standard": "{duration.standard}",
+    "slow": "{duration.slow}"
+  },
+  "ease": {
+    "standard": "{easing.standard}",
+    "enter": "{easing.enter}",
+    "exit": "{easing.exit}"
+  }
+}

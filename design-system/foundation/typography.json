@@ -1,0 +1,56 @@
+{
+  "version": "1.0.0",
+  "font": {
+    "sans": "{fontFamily.sans}"
+  },
+  "type": {
+    "displayLg": {
+      "size": "{fontSize.32}",
+      "lineHeight": "38px",
+      "weight": "{fontWeight.bold}",
+      "tracking": "-0.03em"
+    },
+    "headingLg": {
+      "size": "{fontSize.28}",
+      "lineHeight": "34px",
+      "weight": "{fontWeight.bold}",
+      "tracking": "-0.03em"
+    },
+    "headingMd": {
+      "size": "{fontSize.22}",
+      "lineHeight": "28px",
+      "weight": "{fontWeight.bold}",
+      "tracking": "-0.02em"
+    },
+    "headingSm": {
+      "size": "{fontSize.18}",
+      "lineHeight": "24px",
+      "weight": "{fontWeight.semibold}",
+      "tracking": "-0.02em"
+    },
+    "bodyLg": {
+      "size": "{fontSize.16}",
+      "lineHeight": "24px",
+      "weight": "{fontWeight.regular}",
+      "tracking": "0"
+    },
+    "bodyMd": {
+      "size": "{fontSize.15}",
+      "lineHeight": "22px",
+      "weight": "{fontWeight.regular}",
+      "tracking": "0"
+    },
+    "labelMd": {
+      "size": "{fontSize.14}",
+      "lineHeight": "20px",
+      "weight": "{fontWeight.semibold}",
+      "tracking": "0"
+    },
+    "caption": {
+      "size": "{fontSize.12}",
+      "lineHeight": "16px",
+      "weight": "{fontWeight.semibold}",
+      "tracking": "0.02em"
+    }
+  }
+}

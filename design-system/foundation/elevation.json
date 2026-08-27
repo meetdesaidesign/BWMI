@@ -1,0 +1,9 @@
+{
+  "version": "1.0.0",
+  "elevation": {
+    "0": "{shadow.0}",
+    "1": "{shadow.1}",
+    "2": "{shadow.2}",
+    "3": "{shadow.3}"
+  }
+}

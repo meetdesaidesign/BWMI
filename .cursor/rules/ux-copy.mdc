@@ -1,0 +1,30 @@
+---
+description: UX copy source of truth for every user-facing string
+globs: "**/{lib/i18n.ts,components/**/*.tsx,app/**/*.tsx,lib/seed.ts,design-system/**/*.md}"
+alwaysApply: true
+---
+
+# UX copy
+
+Follow `design-system/guidelines/ux-copy.md` before writing or editing any user-facing string.
+
+- Accuracy > clarity > brevity > personality.
+- Canonical terms: report, issue, issue type, location, photo, update, status, team, resolved, confirmed, reopen.
+- Sentence case. No ALL-CAPS labels and no `text-transform: uppercase` on UI copy.
+- Put reusable strings in `lib/i18n.ts`. Do not hardcode English or Hindi in components.
+- Buttons are verb-led and name the object: “Submit report”, “Reopen report”.
+- Errors = problem + recovery. Permissions = what + why + alternative.
+- Do not invent SLAs, monitoring, or emergency coverage.
+- If a simpler sentence says the same thing, use it.
+
+```ts
+// ❌
+"Your grievance has been registered successfully"
+"PHOTO EVIDENCE"
+"View proof trail"
+
+// ✅
+"Report submitted"
+"Photo"
+"View report"
+```
