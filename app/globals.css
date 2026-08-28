@@ -3038,17 +3038,36 @@ p { text-wrap: pretty; }
 .capture-page .top-bar .adm-nav-bar-back { min-height: var(--touch-min); min-width: var(--touch-min); }
 
 .capture-page,
-.review-page,
+.review-page {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 0;
+}
 .contest-page {
   --sticky-action-clearance: calc(
-    54px +
-    var(--space-3) +
-    var(--space-4) +
-    env(safe-area-inset-bottom, 0px) +
-    var(--space-6)
+    54px + var(--space-3) + var(--space-4) +
+    env(safe-area-inset-bottom, 0px) + var(--space-6)
   );
   padding-bottom: var(--sticky-action-clearance);
   scroll-padding-bottom: var(--sticky-action-clearance);
+}
+.capture-page > .top-bar,
+.review-page > .top-bar,
+.capture-page > .sticky-action,
+.review-page > .sticky-action {
+  flex: 0 0 auto;
+}
+.report-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+}
+.report-scroll::-webkit-scrollbar {
+  display: none;
 }
 .capture-copy { padding: var(--space-5) var(--page-padding) 0; }
 
@@ -3530,6 +3549,13 @@ p { text-wrap: pretty; }
   backdrop-filter: blur(14px);
   border-top: 1px solid var(--border-subtle);
   z-index: var(--z-overlay);
+}
+.capture-page > .sticky-action,
+.review-page > .sticky-action {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
 }
 
 /* Photo analysis overlay lives on the capture card; this clone carries the

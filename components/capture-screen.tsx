@@ -100,6 +100,7 @@ export function CaptureScreen({
     <div className={`full-page capture-page${analyzing ? " is-analyzing" : ""}`}>
       <TopBar title={t.reportProblem} onBack={onBack} />
 
+      <div className="report-scroll">
       <div className="step-progress" role="progressbar" aria-label={t.stepAria} aria-valuemin={1} aria-valuemax={2} aria-valuenow={1}>
         <span className="is-active" />
         <span />
@@ -162,6 +163,7 @@ export function CaptureScreen({
       {offline && photo && <p className="capture-offline">{t.savedOffline}</p>}
 
       {!analyzing && <p className="visually-hidden" role="status" aria-live="polite">{announcement}</p>}
+      </div>
 
       <div className="sticky-action">
         <Button block color="primary" size="large" className="primary-button" disabled={!canContinue} onClick={onContinue}>
