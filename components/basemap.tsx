@@ -1,7 +1,11 @@
 "use client";
 
-import { TileLayer } from "react-leaflet";
+import { useEffect } from "react";
+import L from "leaflet";
+import { TileLayer, useMap } from "react-leaflet";
 import { tokens } from "@/design-system/generated/tokens";
+import { GOOGLE_MAPS_API_KEY, loadGoogleMaps } from "@/lib/google-maps";
+import { FIXO_GOOGLE_MAP_STYLE } from "@/lib/map-style";
 
 const CARTO_KEY = process.env.NEXT_PUBLIC_CARTO_API_KEY ?? "";
 
@@ -36,7 +40,45 @@ const LABEL_MIN_ZOOM = Number(tokens.mapLabelMinZoom);
 const LABEL_MAX_ZOOM = Number(tokens.mapLabelMaxZoom);
 const LABEL_OPACITY = Number(tokens.mapLabelOpacity);
 
+/**
+ * Google localizes geopolitical boundaries from the loader's `region: "IN"`
+ * setting. Using the raster road map through Leaflet also avoids Esri's
+ * high-zoom "map data not available" tile, whose dotted placeholder resembles
+ * an inaccurate national boundary.
+ */
+function IndiaLocalizedBasemap() {
+  const map = useMap();
+
+  useEffect(() => {
+    let disposed = false;
+    let layer: L.GridLayer | undefined;
+
+    void loadGoogleMaps(GOOGLE_MAPS_API_KEY).then(async () => {
+      await import("leaflet.gridlayer.googlemutant");
+      if (disposed) return;
+
+      layer = L.gridLayer.googleMutant({
+        type: "roadmap",
+        styles: FIXO_GOOGLE_MAP_STYLE,
+        maxZoom: 20,
+      });
+      layer.addTo(map);
+    });
+
+    return () => {
+      disposed = true;
+      if (layer) map.removeLayer(layer);
+    };
+  }, [map]);
+
+  return null;
+}
+
 export function Basemap() {
+  // Prefer Google's India-localized cartography whenever its browser key is
+  // configured. The loader sets region=IN before this layer is constructed.
+  if (GOOGLE_MAPS_API_KEY) return <IndiaLocalizedBasemap />;
+
   // CARTO's unkeyed tiles carry an "API KEY REQUIRED" watermark, so Esri is the
   // default; CARTO Positron — sharper, and English-only labels — is used when a
   // key is configured.
