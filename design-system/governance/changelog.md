@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.8.0 — 28 August 2026
+
+Bottom navigation is taller so it sits in proportion with the cards above it. Bar content 64px (56px landscape) plus at least 20px bottom inset (16px landscape). Report circle 56px with a clearer shadow. Destination icons 24px; inactive icon and label use `text.secondary`. Destination tap targets are at least 48×48 px.
+
+## 1.7.0 — 28 August 2026
+
+Sans typeface is Satoshi. Devanagari and Kannada still fall back to Noto.
+
 ## 1.6.0 — 28 August 2026
 
 My Reports became a compact tracking list: heading-md title, Raised/Supported segments with counts, and a filter/sort control. Report cards use 16px radius, 88px evidence, a status pill, and a footer for confirmations / merged reports / last update. Bottom navigation is a flat bar with a hairline top border; the primary colour is reserved for the active destination and the Report circle.

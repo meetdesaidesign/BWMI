@@ -79,6 +79,7 @@ const rawSeedIssues: Issue[] = [
     roleEn: "Sanitary Inspector", roleHi: "स्वच्छता निरीक्षक", roleKn: "ನೈರ್ಮಲ್ಯ ನಿರೀಕ್ಷಕ",
     escalationEn: "Zonal office · 1800-14-0014", escalationHi: "क्षेत्रीय कार्यालय · 1800-14-0014", escalationKn: "ವಲಯ ಕಚೇರಿ · 1800-14-0014",
     expectedEn: "Marked complete today", expectedHi: "आज पूरा बताया गया", expectedKn: "ಇಂದು ಪೂರ್ಣ ಎನ್ನಲಾಗಿದೆ", mine: true, trust: [],
+    resolutionImage: "/images/waste-metro-gate.jpg",
     timeline: [...roadTimeline, { status: "awaiting_confirmation", labelEn: "Check the fix", labelHi: "मरम्मत जाँचें", labelKn: "ದುರಸ್ತಿ ಪರಿಶೀಲಿಸಿ", date: "Today · 11:20", noteEn: "The team added a completion photo", noteHi: "टीम ने पूरा होने की फोटो जोड़ी", noteKn: "ತಂಡ ಪೂರ್ಣಗೊಂಡ ಫೋಟೋ ಸೇರಿಸಿದೆ" }],
   },
   {
@@ -290,5 +291,6 @@ function fromDummy(issue: DummyIssue): Issue {
 export const seedIssues: Issue[] = [...rawSeedIssues, ...wardSpreadIssues.map(fromDummy), ...dummyIssues.map(fromDummy)].map((issue) => ({
   ...issue,
   image: assetPath(issue.image),
+  resolutionImage: issue.resolutionImage ? assetPath(issue.resolutionImage) : undefined,
   trust: issue.trust.length ? issue.trust : trustFor(issue.status, issue.supporters),
 }));

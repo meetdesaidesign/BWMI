@@ -107,9 +107,6 @@ export function ConfirmedScreen({
           <Lock size={13} strokeWidth={2.25} aria-hidden />
           <span>{t.sharePrivacyNote}</span>
         </p>
-        <button type="button" className="confirmed-done" onClick={onClose}>
-          {t.done}
-        </button>
       </div>
     </div>
   );
