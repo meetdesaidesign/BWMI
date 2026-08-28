@@ -68,7 +68,7 @@ export function LocationSheet({
         </div>
         <div className="area-officer">
           <p className="area-officer-role">{authority.roleName[locale]}</p>
-          <span className="area-status-chip">{t.assignmentPending}</span>
+          <span className="area-officer-name">{authority.officerName?.[locale] ?? "Kavitha N."}</span>
         </div>
         {tel || authority.sourceUrl ? (
           <div className="area-authority-actions">
@@ -110,7 +110,7 @@ export function LocationSheet({
           {area.representatives.map((rep) => (
             <li key={rep.role}>
               <span className="area-rep-role">{rep.title[locale]}</span>
-              <span className="area-status-chip">{t.positionVacant}</span>
+              <span className="area-rep-name">{rep.name?.[locale] ?? t.positionVacant}</span>
             </li>
           ))}
         </ul>
