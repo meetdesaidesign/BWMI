@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element -- issue evidence thumbnails include local SVGs and data URLs */
 
-import { ChevronRight, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { CategoryIcon, categoryColor } from "./category-icon";
 import { countCopy, formatCopy, getCategoryLabel, getStatusLabel, type getCopy } from "@/lib/i18n";
 import type { Issue, Locale } from "@/lib/types";
@@ -158,7 +158,6 @@ export function ProblemCard({
           )}
         </span>
 
-        <ChevronRight className="problem-card-chevron" size={18} strokeWidth={2} aria-hidden />
       </span>
 
       <span className="problem-card-foot">
