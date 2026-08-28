@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element -- report evidence uses local files and data URLs */
 
-import { Check } from "lucide-react";
+import { Check, Clock3 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "antd-mobile";
 import { areaContext, officerDisplayName, resolveIssueAuthority } from "@/lib/authority";
@@ -83,13 +83,17 @@ export function SubmittedScreen({
               <span>{t.nextStepScheduled}</span>
             </li>
           </ol>
-          <p className="submitted-expected">{t.expectedResponse}</p>
+          <p className="submitted-expected">
+            <Clock3 size={15} strokeWidth={2} aria-hidden />
+            <span>{t.expectedResponse}</span>
+          </p>
         </section>
 
         <section className="submitted-card submitted-authority">
           <h2 className="submitted-section-label">{t.responsibleAuthority}</h2>
           <p className="submitted-dept">{department}</p>
           <p className="submitted-dept-place">{authorityPlace}</p>
+          <div className="submitted-authority-divider" aria-hidden />
           {officer ? (
             <div className="submitted-officer">
               <span className="submitted-officer-avatar" aria-hidden>{initialsOf(officer)}</span>
