@@ -576,7 +576,6 @@ p { text-wrap: pretty; }
   font-size: var(--type-caption-size);
   font-weight: var(--font-weight-semibold);
 }
-.profile-verify-status.is-verified { color: var(--feedback-identity-strong); }
 .identity-badge {
   display: inline-flex;
   align-items: center;
@@ -2243,21 +2242,6 @@ p { text-wrap: pretty; }
 @keyframes mine-card-in { from { opacity: 0; transform: translateY(8px); } }
 
 .mine-filter-sheet { animation: mine-sheet-in 300ms cubic-bezier(0.16, 1, 0.3, 1); }
-.mine-list-end {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: var(--space-4) var(--space-3) var(--space-6);
-  color: var(--text-tertiary);
-  text-align: center;
-  font-size: 13px;
-  line-height: 18px;
-}
-.mine-list-end strong {
-  color: var(--text-secondary);
-  font-weight: var(--font-weight-semibold);
-}
 .overlay-sheet-root:has(.mine-filter-sheet) .overlay-sheet-backdrop {
   background: rgba(0, 0, 0, 0.14);
   animation: mine-backdrop-in 200ms ease-out;
@@ -2376,10 +2360,6 @@ p { text-wrap: pretty; }
 .bottom-nav-report-badge svg {
   width: var(--nav-icon-size);
   height: var(--nav-icon-size);
-}
-.bottom-nav-report-badge .bottom-nav-report-plus {
-  width: 48px;
-  height: 48px;
 }
 .bottom-nav-report:active:not(:disabled) {
   transform: scale(0.96);
@@ -3570,7 +3550,14 @@ p { text-wrap: pretty; }
 
 .sheet-actions { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-4); }
 
-.pin-help { color: var(--text-secondary); margin-bottom: var(--space-3); }
+.pin-sheet .overlay-sheet-header { margin-bottom: var(--space-4); }
+.pin-sheet .overlay-sheet-subtitle {
+  margin-top: var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--type-body-md-size);
+  line-height: var(--type-body-md-line-height);
+  font-weight: var(--font-weight-regular);
+}
 .pin-map-frame {
   position: relative;
   height: 260px;
@@ -3648,7 +3635,6 @@ p { text-wrap: pretty; }
 
 .review-evidence {
   aspect-ratio: 16 / 9;
-  max-height: 184px;
   margin: var(--space-3) var(--page-padding) var(--space-4);
   border-radius: 18px;
   overflow: hidden;
@@ -3667,24 +3653,21 @@ p { text-wrap: pretty; }
   align-items: center;
   color: var(--text-inverse);
   gap: var(--space-2);
-  min-height: 40px;
-  padding: 0;
+  min-height: 44px;
+  padding: 8px 10px;
   border: 0;
-  background: transparent;
+  border-radius: var(--radius-12);
+  background: var(--overlay-scrim-strong);
   text-align: left;
 }
-.review-evidence span,
-.review-evidence small {
+.review-location > span {
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  background: var(--overlay-scrim-strong);
-  padding: 6px 8px;
-  border-radius: 10px;
+  min-width: 0;
   font-size: var(--type-caption-size);
 }
-.review-evidence span { min-width: 0; }
-.review-evidence small { flex-shrink: 0; font-weight: var(--font-weight-bold); }
+.review-location > svg { flex-shrink: 0; }
 
 .review-page > .top-bar,
 .review-page > .top-bar .adm-nav-bar { min-height: 52px; }
@@ -3853,17 +3836,6 @@ p { text-wrap: pretty; }
   flex-direction: column;
   gap: var(--space-4);
   box-shadow: var(--elevation-1);
-}
-.duplicate-match-label {
-  position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
-  padding: 3px 7px;
-  border-radius: var(--radius-full);
-  background: var(--feedback-warning-soft);
-  color: var(--feedback-warning);
-  font-size: 11px;
-  font-weight: var(--font-weight-bold);
 }
 .duplicate-notice-match {
   display: grid;
@@ -4065,10 +4037,6 @@ p { text-wrap: pretty; }
   display: grid;
   gap: var(--space-1);
 }
-.submitted-summary-top {
-  display: block;
-  padding-right: 112px;
-}
 .submitted-summary-title {
   margin: 0;
   color: #151B2B;
@@ -4080,19 +4048,6 @@ p { text-wrap: pretty; }
   line-height: 23px;
   font-weight: var(--font-weight-semibold);
   text-wrap: pretty;
-}
-.submitted-summary .status-pill {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  min-height: 30px;
-  padding: 0 12px;
-  border-radius: var(--radius-full);
-  background: #F3ECFF;
-  color: #7028E4;
-  font-size: 13px;
-  line-height: 30px;
-  font-weight: var(--font-weight-semibold);
 }
 .submitted-summary-meta,
 .submitted-summary-id {
@@ -4274,14 +4229,6 @@ p { text-wrap: pretty; }
     grid-template-columns: 72px minmax(0, 1fr);
     gap: var(--space-3);
   }
-  .submitted-summary .status-pill {
-    top: var(--space-4);
-    right: var(--space-4);
-  }
-  .submitted-summary-top {
-    padding-top: 36px;
-    padding-right: 0;
-  }
   .submitted-steps li {
     font-size: 11px;
     line-height: 14px;
@@ -4322,26 +4269,59 @@ p { text-wrap: pretty; }
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.share-post-tag { color: var(--feedback-identity); }
 .share-edit {
   display: grid;
   gap: var(--space-2);
 }
-.share-edit span {
+.share-edit > span {
   color: var(--text-secondary);
   font-size: var(--type-caption-size);
   font-weight: var(--font-weight-semibold);
 }
-.share-edit textarea {
-  width: 100%;
+.share-edit-field {
+  position: relative;
   min-height: 120px;
+}
+.share-edit-highlight {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
   padding: var(--space-3);
-  border: 1px solid var(--border-default);
+  border: 1px solid transparent;
   border-radius: var(--input-radius);
   background: var(--surface-secondary);
   color: var(--text-primary);
   font-size: var(--type-body-md-size);
   line-height: var(--type-body-md-line-height);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  pointer-events: none;
+}
+.share-edit textarea {
+  position: relative;
+  width: 100%;
+  min-height: 120px;
+  padding: var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--input-radius);
+  background: transparent;
+  color: transparent;
+  caret-color: var(--text-primary);
+  -webkit-text-fill-color: transparent;
+  font-size: var(--type-body-md-size);
+  line-height: var(--type-body-md-line-height);
   resize: vertical;
+}
+.share-edit textarea::selection {
+  background: color-mix(in srgb, var(--feedback-identity) 24%, transparent);
+}
+@media (forced-colors: active) {
+  .share-edit-highlight { display: none; }
+  .share-edit textarea {
+    color: CanvasText;
+    -webkit-text-fill-color: CanvasText;
+  }
 }
 .share-review-note {
   margin: 0;

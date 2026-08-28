@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { POST_LIMIT, postIntentUrl } from "@/lib/share";
 import type { getCopy } from "@/lib/i18n";
 import { OverlaySheet } from "./overlay-sheet";
@@ -11,6 +11,17 @@ export function XLogo({ size = 15 }: { size?: number }) {
       <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
     </svg>
   );
+}
+
+const TAG_PATTERN = /([@#][\p{L}\p{N}_]+)/gu;
+const TAG_EXACT = /^[@#][\p{L}\p{N}_]+$/u;
+
+function HighlightedPost({ text }: { text: string }) {
+  return text.split(TAG_PATTERN).map((part, index) => (
+    TAG_EXACT.test(part)
+      ? <span className="share-post-tag" key={`${part}-${index}`}>{part}</span>
+      : part
+  ));
 }
 
 export function ShareSheet({
@@ -27,6 +38,7 @@ export function ShareSheet({
   onClose: () => void;
 }) {
   const [text, setText] = useState(post);
+  const highlightRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open) setText(post);
@@ -56,16 +68,27 @@ export function ShareSheet({
       <div className="share-compose">
         <div className="share-preview">
           <span className="share-preview-mark"><XLogo size={14} /></span>
-          <p className="share-preview-text">{draft}</p>
+          <p className="share-preview-text"><HighlightedPost text={draft} /></p>
         </div>
         <label className="share-edit">
           <span>{t.sharePostEdit}</span>
-          <textarea
-            value={text}
-            maxLength={POST_LIMIT}
-            rows={5}
-            onChange={(event) => setText(event.target.value)}
-          />
+          <div className="share-edit-field">
+            <div ref={highlightRef} className="share-edit-highlight" aria-hidden>
+              <HighlightedPost text={text} />
+              {text.endsWith("\n") ? "\u00a0" : null}
+            </div>
+            <textarea
+              value={text}
+              maxLength={POST_LIMIT}
+              rows={5}
+              onChange={(event) => setText(event.target.value)}
+              onScroll={(event) => {
+                if (!highlightRef.current) return;
+                highlightRef.current.scrollTop = event.currentTarget.scrollTop;
+                highlightRef.current.scrollLeft = event.currentTarget.scrollLeft;
+              }}
+            />
+          </div>
         </label>
         <p className="share-review-note type-caption">{t.shareReviewNote}</p>
       </div>

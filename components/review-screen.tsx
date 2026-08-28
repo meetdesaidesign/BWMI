@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element -- review evidence is a user-captured data URL */
 
-import { ArrowRight, Check, ChevronRight, MapPin, Users } from "lucide-react";
+import { ArrowRight, Check, MapPin, Pencil, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "antd-mobile";
 import { formatCopy, getCategoryLabel, getCopy, localizedField } from "@/lib/i18n";
@@ -142,7 +142,7 @@ export function ReviewScreen({
         {photoReady && (
           <button type="button" className="review-location" onClick={onEditLocation} aria-label={`Edit location: ${placeLine}`}>
             <span><MapPin size={14} />{locale === "en" ? "36th Cross, 4th Block · Accurate to 35 m" : placeLine}</span>
-            <small>Edit <ChevronRight size={14} /></small>
+            <Pencil size={16} aria-hidden />
           </button>
         )}
       </div>
@@ -240,7 +240,6 @@ function DuplicateNotice({
     <section className="duplicate-section is-enter" aria-labelledby="duplicate-heading">
       <h2 id="duplicate-heading">Similar report found nearby</h2>
       <aside className="duplicate-notice" aria-label={t.duplicateAria}>
-      <span className="duplicate-match-label">Possible match</span>
       <div className="duplicate-notice-match">
         {duplicate.image
           ? <img className="duplicate-notice-thumb" src={duplicate.image} alt="" />

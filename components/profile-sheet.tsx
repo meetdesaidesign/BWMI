@@ -61,15 +61,17 @@ export function ProfileSheet({
             <span className="type-caption">{t.profilePhoneHelp}</span>
           </dd>
         </div>
-        <div>
-          <dt>{t.profileIdentity}</dt>
-          <dd>
-            <span className={`profile-verify-status ${identityVerified ? "is-verified" : ""}`}>
-              <BadgeCheck size={14} aria-hidden />
-              {identityVerified ? t.aadhaarVerified : t.aadhaarUnverified}
-            </span>
-          </dd>
-        </div>
+        {!identityVerified ? (
+          <div>
+            <dt>{t.profileIdentity}</dt>
+            <dd>
+              <span className="profile-verify-status">
+                <BadgeCheck size={14} aria-hidden />
+                {t.aadhaarUnverified}
+              </span>
+            </dd>
+          </div>
+        ) : null}
         <div>
           <dt>{t.reports}</dt>
           <dd>{formatCopy(t.profileReports, { count: reportCount })}</dd>
