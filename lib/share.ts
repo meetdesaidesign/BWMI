@@ -1,5 +1,6 @@
-import type { Authority, Representative } from "./types";
-import { formatCopy } from "./i18n";
+import { areaContext, resolveIssueAuthority } from "./authority";
+import { formatCopy, localizedField } from "./i18n";
+import type { Authority, Issue, Locale, Representative } from "./types";
 
 export const POST_LIMIT = 280;
 
@@ -61,4 +62,22 @@ export function composeEscalationPost({
 
 export function postIntentUrl(text: string) {
   return `${INTENT_URL}?text=${encodeURIComponent(text)}`;
+}
+
+/** Ready-to-edit public post for a report, used by share and overdue escalation. */
+export function composeIssuePost(issue: Issue, locale: Locale, template: string, hashtags: string) {
+  const authority = resolveIssueAuthority(issue);
+  return composeEscalationPost({
+    template,
+    hashtags,
+    title: localizedField(issue as unknown as Record<string, unknown>, locale, "title"),
+    area: `${areaContext.areaName[locale]} · ${areaContext.ward[locale]}`,
+    id: issue.id,
+    handles: escalationHandles(authority, areaContext.representatives),
+  });
+}
+
+export function isResponseOverdue(issue: Issue) {
+  if ((issue.overdueDays ?? 0) <= 0) return false;
+  return issue.status !== "confirmed" && issue.status !== "awaiting_confirmation";
 }

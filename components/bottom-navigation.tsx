@@ -5,11 +5,11 @@ import type { getCopy } from "@/lib/i18n";
 
 export type BottomNavDestination = "around" | "reports";
 
-const iconProps = { size: 22, strokeWidth: 1.9, "aria-hidden": true as const };
+const iconProps = { size: 20, strokeWidth: 1.75, "aria-hidden": true as const };
 
 /**
- * Three slots in one dock: the two destinations flank the report action so the
- * primary create affordance sits under the thumb, centred on the bar.
+ * Two destinations on a flat bar, with Report as a circular action in the
+ * centre — reachable before either destination, without a floating dock.
  */
 export function BottomNavigation({
   activeItem,
@@ -45,22 +45,7 @@ export function BottomNavigation({
           <span className="bottom-nav-label">{t.nearby}</span>
         </button>
 
-        <button
-          type="button"
-          className={`bottom-nav-item bottom-nav-report${hint ? " is-hint" : ""}`}
-          aria-label={t.reportProblem}
-          aria-busy={busy || undefined}
-          disabled={busy}
-          onClick={onReport}
-        >
-          <span className="bottom-nav-report-badge">
-            {busy ? (
-              <LoaderCircle className="bottom-nav-spinner" size={26} strokeWidth={2.5} aria-hidden />
-            ) : (
-              <Plus size={28} strokeWidth={2.5} aria-hidden />
-            )}
-          </span>
-        </button>
+        <span className="bottom-nav-spacer" aria-hidden />
 
         <button
           type="button"
@@ -74,6 +59,23 @@ export function BottomNavigation({
           <span className="bottom-nav-label">{t.reports}</span>
         </button>
       </div>
+
+      <button
+        type="button"
+        className={`bottom-nav-report${hint ? " is-hint" : ""}`}
+        aria-label={t.reportProblem}
+        aria-busy={busy || undefined}
+        disabled={busy}
+        onClick={onReport}
+      >
+        <span className="bottom-nav-report-badge">
+          {busy ? (
+            <LoaderCircle className="bottom-nav-spinner" size={20} strokeWidth={2.4} aria-hidden />
+          ) : (
+            <Plus size={20} strokeWidth={2.4} aria-hidden />
+          )}
+        </span>
+      </button>
     </nav>
   );
 }

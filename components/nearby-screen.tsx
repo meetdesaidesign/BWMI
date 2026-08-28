@@ -1,25 +1,23 @@
 "use client";
 
-import { ChevronDown, Globe2, LocateFixed } from "lucide-react";
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
+import { ChevronDown, LocateFixed, Search, X } from "lucide-react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { LocationSheet } from "./location-sheet";
 import { FilterBar, type FilterPanel } from "./filter-bar";
 import { FilterSheet, type LocationStatus } from "./filter-sheet";
 import { IssueCarousel } from "./issue-carousel";
-import { LanguageSheet } from "./language-sheet";
 import { MapLoader } from "./map-loader";
 import { ProfileAvatar } from "./profile-avatar";
 import { areaContext } from "@/lib/authority";
 import { track } from "@/lib/analytics";
 import { applyFilters, defaultFilters, previewCount, readStoredFilters, writeStoredFilters } from "@/lib/filters";
-import { WARD_CENTER, locateInWard, type MapViewport } from "@/lib/geo";
+import { WARD_CENTER, boundsMovedAway, locateInWard, type MapBounds, type MapViewport } from "@/lib/geo";
 import { formatCopy, getPublicStatusLabel, type getCopy } from "@/lib/i18n";
-import { LOCALE_META } from "@/lib/locale";
 import { publicStatusOf } from "@/lib/public-status";
 import type { FilterState, Issue, Locale } from "@/lib/types";
 
 /** Height the map assumes for the deck before it has been measured once. */
-const DECK_PEEK_ESTIMATE = 244;
+const DECK_PEEK_ESTIMATE = 268;
 
 function titleOf(issue: Issue, locale: Locale) {
   return locale === "hi" ? issue.titleHi : locale === "kn" ? issue.titleKn : issue.titleEn;
@@ -27,6 +25,7 @@ function titleOf(issue: Issue, locale: Locale) {
 
 export type NearbyScreenHandle = {
   resetPeek: () => void;
+  focusIssue: (id: string) => void;
 };
 
 export const NearbyScreen = forwardRef<NearbyScreenHandle, {
@@ -34,21 +33,17 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
   locale: Locale;
   t: ReturnType<typeof getCopy>;
   offline: boolean;
-  onChangeLocale: (locale: Locale) => void;
   onOpenIssue: (issue: Issue) => void;
-  onReport: () => void;
   onOpenProfile: () => void;
-  phoneVerified: boolean;
+  identityVerified: boolean;
 }>(function NearbyScreen({
   issues,
   locale,
   t,
   offline,
-  onChangeLocale,
   onOpenIssue,
-  onReport,
   onOpenProfile,
-  phoneVerified,
+  identityVerified,
 }, ref) {
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
@@ -57,6 +52,14 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
   const [gps, setGps] = useState<[number, number] | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
   const [viewport, setViewport] = useState<MapViewport | null>(null);
+  // "Search this area" is a one-off narrowing of the results to what the resident
+  // panned to — deliberately not part of the saved filters, so it never outlives
+  // the session or hides issues on the next visit.
+  const [searchArea, setSearchArea] = useState<MapBounds | null>(null);
+  const [areaStale, setAreaStale] = useState(false);
+  // The view the current results describe. Only a pan away from it earns the button.
+  const resultBounds = useRef<MapBounds | null>(null);
+  const viewportRef = useRef<MapViewport | null>(null);
   // Snapshot of the ids the deck opened with. The map recentres on every swipe,
   // which reorders the distance-sorted results — the deck must not reshuffle
   // under the thumb that is swiping it.
@@ -64,14 +67,6 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
   const [deckPeek, setDeckPeek] = useState(DECK_PEEK_ESTIMATE);
   const [filterPanel, setFilterPanel] = useState<FilterPanel | null>(null);
   const [locationOpen, setLocationOpen] = useState(false);
-  const [languageOpen, setLanguageOpen] = useState(false);
-
-  useImperativeHandle(ref, () => ({
-    resetPeek: () => {
-      setHighlightedId(null);
-      setDeckIds(null);
-    },
-  }));
 
   useEffect(() => {
     const stored = readStoredFilters();
@@ -82,6 +77,38 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
     if (coords) setHere(coords);
     setRecenterNonce((n) => n + 1);
   }, []);
+
+  const clearSearchArea = useCallback(() => {
+    setSearchArea(null);
+    setAreaStale(false);
+    // Results now describe the whole area again, as seen from where the map sits.
+    resultBounds.current = viewportRef.current?.bounds ?? null;
+  }, []);
+
+  const handleViewport = useCallback((next: MapViewport, meta: { userDriven: boolean }) => {
+    setViewport(next);
+    viewportRef.current = next;
+    if (!meta.userDriven) {
+      // Recentres and marker zooms are ours: the results follow the map, so the
+      // view they describe moves with it and nothing has gone stale.
+      resultBounds.current = next.bounds;
+      return;
+    }
+    const anchor = resultBounds.current;
+    if (!anchor) {
+      resultBounds.current = next.bounds;
+      return;
+    }
+    if (boundsMovedAway(anchor, next.bounds)) setAreaStale(true);
+  }, []);
+
+  const searchThisArea = useCallback(() => {
+    if (!viewport) return;
+    setSearchArea(viewport.bounds);
+    resultBounds.current = viewport.bounds;
+    setAreaStale(false);
+    track("map_search_area", { source: "map_pan" });
+  }, [viewport]);
 
   const requestHere = useCallback((recenter: boolean, source: "map" | "filter" = "map") => {
     const finish = (coords: [number, number]) => {
@@ -123,14 +150,31 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
 
   const origin = gps ?? viewport?.center ?? here;
   const filterContext = useMemo(
-    () => ({ bounds: viewport?.bounds ?? null, origin, userCoordinates: gps, wardAvailable: true }),
-    [viewport, origin, gps],
+    () => ({ bounds: searchArea, origin, userCoordinates: gps, wardAvailable: true }),
+    [searchArea, origin, gps],
   );
   const countDraft = useCallback((draft: FilterState) => previewCount(issues, draft, filterContext), [issues, filterContext]);
   const mapIssues = useMemo(
-    () => applyFilters(issues, filters, filters.locationScope === "visible_map" ? { ...filterContext, bounds: null } : filterContext),
+    () => applyFilters(issues, filters, filterContext),
     [issues, filters, filterContext],
   );
+
+  useImperativeHandle(ref, () => ({
+    resetPeek: () => {
+      setHighlightedId(null);
+      setDeckIds(null);
+    },
+    focusIssue: (id: string) => {
+      if (!issues.some((issue) => issue.id === id)) return;
+      setHighlightedId(id);
+      setDeckIds((current) => {
+        if (current?.includes(id)) return current;
+        const ids = mapIssues.map((item) => item.id);
+        return ids.includes(id) ? ids : [id, ...ids];
+      });
+    },
+  }), [issues, mapIssues]);
+
   const highlighted = issues.find((issue) => issue.id === highlightedId) ?? null;
   const deckIssues = useMemo(() => {
     if (!deckIds) return [];
@@ -154,6 +198,9 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
   const applyFiltersAndStore = (next: FilterState) => {
     setFilters(next);
     writeStoredFilters(next);
+    // Picking a ward or a radius is a geography of its own — intersecting it with
+    // a leftover map area would quietly hide issues the resident just asked for.
+    if (next.locationScope !== "all") clearSearchArea();
     if (next.locationScope === "near_me" && gps) flyToHere(gps);
     if (highlightedId && !applyFilters(issues, next, { ...filterContext, userCoordinates: gps }).some((issue) => issue.id === highlightedId)) {
       clearSelection();
@@ -189,7 +236,7 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
   const unfiltered = applyFilters(
     issues,
     { ...defaultFilters, statusGroups: [], categories: [] },
-    filters.locationScope === "visible_map" ? { ...filterContext, bounds: null } : filterContext,
+    filterContext,
   );
   const emptyCopy = unfiltered.length === 0 ? t.noIssuesYet : t.noFilterResults;
 
@@ -200,53 +247,59 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
         selected={highlighted ?? undefined}
         onSelect={selectIssue}
         onDeselect={clearSelection}
-        onViewportChange={setViewport}
-        onReport={onReport}
+        onViewportChange={handleViewport}
         here={here}
         recenterNonce={recenterNonce}
         locale={locale}
         sheetPeek={dockPeek}
-        reportLabel={t.reportProblem}
-        reportAria={t.reportHereAria}
+        hereAria={t.youAreHereAria}
         getMarkerLabel={markerLabel}
         getClusterLabel={clusterLabel}
       />
 
       <div className="map-overlays">
-        <header className="map-header">
+        <header className="top-surface">
           <button
             type="button"
-            className="map-profile"
-            onClick={onOpenProfile}
-            aria-label={phoneVerified ? t.profileAriaVerified : t.profileAria}
-          >
-            <ProfileAvatar size={38} verified={phoneVerified} alt="" />
-          </button>
-          <button
-            type="button"
-            className="area-selector"
+            className="top-surface-place"
             onClick={() => setLocationOpen(true)}
             aria-haspopup="dialog"
             aria-label={`${areaContext.areaName[locale]}${authorityLine ? `, ${authorityLine}` : ""}. ${t.areaDetails}`}
           >
-            <span className="area-selector-text">
-              <span>{areaContext.areaName[locale]}</span>
+            <span className="top-surface-text">
+              <span className="top-surface-name">{areaContext.areaName[locale]}</span>
               {authorityLine ? <small>{authorityLine}</small> : null}
             </span>
             <ChevronDown size={16} aria-hidden />
           </button>
-          <button type="button" className="language-button" onClick={() => setLanguageOpen(true)} aria-label={t.languageAria}>
-            <Globe2 size={16} />{LOCALE_META[locale].shortLabel}
+          <button
+            type="button"
+            className="top-surface-profile"
+            onClick={onOpenProfile}
+            aria-label={identityVerified ? t.profileAriaVerified : t.profileAria}
+          >
+            <ProfileAvatar size={32} alt="" />
           </button>
         </header>
         <FilterBar locale={locale} t={t} filters={filters} onOpen={setFilterPanel} />
+        {areaStale ? (
+          <button type="button" className="map-area-action" onClick={searchThisArea}>
+            <Search size={15} strokeWidth={2.25} aria-hidden />
+            {t.searchThisArea}
+          </button>
+        ) : searchArea ? (
+          <button type="button" className="map-area-action is-applied" onClick={clearSearchArea} aria-label={t.clearAreaSearch}>
+            {t.searchingThisArea}
+            <X size={15} strokeWidth={2.25} aria-hidden />
+          </button>
+        ) : null}
       </div>
 
       {offline && (
         <p className="offline-map-label">{formatCopy(t.offlineUpdated, { time: new Intl.DateTimeFormat(localeTag, { hour: "numeric", minute: "2-digit" }).format(new Date()) })}</p>
       )}
 
-      <button type="button" className="map-recenter" onClick={() => requestHere(true)} aria-label={t.locateAria}>
+      <button type="button" className="map-recenter" onClick={() => { clearSearchArea(); requestHere(true); }} aria-label={t.locateAria}>
         <LocateFixed size={18} />
       </button>
 
@@ -254,7 +307,7 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
         <div className="map-empty" role="status">
           <p className="type-caption">{emptyCopy}</p>
           {unfiltered.length > 0 ? (
-            <button type="button" className="text-button" onClick={() => applyFiltersAndStore(defaultFilters)}>{t.clearFilters}</button>
+            <button type="button" className="text-button" onClick={() => { clearSearchArea(); applyFiltersAndStore(defaultFilters); }}>{t.clearFilters}</button>
           ) : null}
         </div>
       ) : null}
@@ -290,7 +343,6 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
         onApply={applyFiltersAndStore}
       />
       <LocationSheet open={locationOpen} locale={locale} t={t} area={areaContext} onClose={() => setLocationOpen(false)} />
-      <LanguageSheet open={languageOpen} locale={locale} t={t} onClose={() => setLanguageOpen(false)} onChange={onChangeLocale} />
     </div>
   );
 });

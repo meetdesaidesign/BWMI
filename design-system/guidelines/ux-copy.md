@@ -118,7 +118,7 @@ Write the clearest version, then shorten without losing meaning. Truncation is a
 - Use the object when ambiguity exists: “Delete photo”, not “Delete”.
 - Do not use “OK” when a meaningful action label is available.
 - Do not use “Yes / No” for confirmations. Repeat the action: “It’s fixed” / “Still broken”.
-- Navigation labels are destinations or a short action: Nearby, Report, My Fixes.
+- Navigation labels are destinations or a short action: Nearby, Report, My Reports.
 - Label the language control “Language”. Show each language in its own script. Changing language must not reset form progress.
 
 ## Forms
@@ -135,7 +135,7 @@ Write the clearest version, then shorten without losing meaning. Truncation is a
 
 **Loading:** present participles — “Uploading photo...”, “Finding your location...”. No fake percentages.
 
-**Empty:** what is empty and what the user can do. Not an error. “No fixes yet. Report a problem to see it here.”
+**Empty:** what is empty and what the user can do. Not an error. “No reports yet. Report a problem to see it here.”
 
 **Success:** confirm the outcome and give the next useful step. Avoid “successfully”. Never say “submitted” until the report has been accepted.
 

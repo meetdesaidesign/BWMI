@@ -1,9 +1,8 @@
 "use client";
 
 import L from "leaflet";
-import { createPortal } from "react-dom";
 import { Circle, Marker, MapContainer, useMap, useMapEvents } from "react-leaflet";
-import { CartoBasemap } from "./carto-basemap";
+import { Basemap } from "./basemap";
 import { tokens } from "@/design-system/generated/tokens";
 import { WARD_CENTER, type MapViewport } from "@/lib/geo";
 import type { Issue, Locale } from "@/lib/types";
@@ -45,79 +44,19 @@ function markerIcon(issue: Issue, selected: boolean, label: string) {
   });
 }
 
-function HereMarker({
-  position,
-  cta,
-  aria,
-  onReport,
-}: {
-  position: [number, number];
-  cta: string;
-  aria: string;
-  onReport: () => void;
-}) {
-  const map = useMap();
-  const rootRef = useRef<HTMLButtonElement>(null);
-  const [xy, setXy] = useState({ x: 0, y: 0, ready: false });
-
-  useEffect(() => {
-    const container = map.getContainer();
-    const host = container.parentElement ?? container;
-    const sync = () => {
-      const point = map.latLngToContainerPoint(position);
-      const crect = container.getBoundingClientRect();
-      const hrect = host.getBoundingClientRect();
-      setXy({
-        x: point.x + crect.left - hrect.left,
-        y: point.y + crect.top - hrect.top,
-        ready: true,
-      });
-    };
-    sync();
-    map.on("move zoom viewreset zoomanim", sync);
-    return () => {
-      map.off("move zoom viewreset zoomanim", sync);
-    };
-  }, [map, position]);
-
-  useEffect(() => {
-    const el = rootRef.current;
-    if (!el) return;
-    L.DomEvent.disableClickPropagation(el);
-  }, [xy.ready]);
-
-  if (!xy.ready) return null;
-
-  const host = map.getContainer().parentElement ?? map.getContainer();
-
-  return createPortal(
-    <div className="here-anchor" style={{ left: xy.x, top: xy.y }}>
-      <button
-        ref={rootRef}
-        type="button"
-        className="here-marker"
-        aria-label={aria}
-        onClick={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          onReport();
-        }}
-      >
-        <span className="here-pin">
-          <span className="here-pulse" aria-hidden="true" />
-          <span className="here-pulse is-delay" aria-hidden="true" />
-          <svg className="here-pin-frame" viewBox="0 0 44 44" aria-hidden="true">
-            <rect x="2" y="2" width="40" height="40" rx="12" fill="none" stroke="currentColor" strokeWidth="2.25" strokeDasharray="5 4" strokeLinecap="round" />
-          </svg>
-          <svg className="here-plus" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
-            <path d="M10 4v12M4 10h12" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-          </svg>
-        </span>
-        <span className="here-cta">{cta}</span>
-      </button>
-    </div>,
-    host,
-  );
+/**
+ * Where the reporter stands: a plain purple dot in the Google Maps idiom —
+ * white ring, soft shadow, no pulse. It reads position only; reporting lives on
+ * the single plus in the bottom dock, so the dot never competes with it.
+ */
+function hereIcon(label: string) {
+  const size = px(tokens.touchMin);
+  return L.divIcon({
+    className: "map-marker-root here-dot-root",
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    html: `<span class="here-dot" role="img" aria-label="${escapeHtml(label)}"></span>`,
+  });
 }
 
 function clusterIcon(count: number, label: string) {
@@ -175,14 +114,12 @@ function MapLayers({
   sheetPeek,
   recenterNonce,
   here,
-  reportLabel,
-  reportAria,
+  hereAria,
   getMarkerLabel,
   getClusterLabel,
   onSelect,
   onDeselect,
   onViewportChange,
-  onReport,
 }: {
   issues: Issue[];
   selected?: Issue;
@@ -190,14 +127,12 @@ function MapLayers({
   sheetPeek: number;
   recenterNonce: number;
   here: [number, number];
-  reportLabel: string;
-  reportAria: string;
+  hereAria: string;
   getMarkerLabel: (issue: Issue) => string;
   getClusterLabel: (count: number) => string;
   onSelect: (issue: Issue) => void;
   onDeselect: () => void;
-  onViewportChange: (viewport: MapViewport) => void;
-  onReport: () => void;
+  onViewportChange: (viewport: MapViewport, meta: { userDriven: boolean }) => void;
 }) {
   const map = useMap();
   const hereRef = useRef(here);
@@ -214,13 +149,16 @@ function MapLayers({
       onDeselect();
     },
     moveend() {
-      if (skipMove.current) skipMove.current = false;
-      onViewportChange(viewportOf(map));
+      // Recentres and cluster zooms are ours, not the resident's — only a pan or
+      // pinch they performed themselves should offer to re-search the area.
+      const programmatic = skipMove.current;
+      skipMove.current = false;
+      onViewportChange(viewportOf(map), { userDriven: !programmatic });
     },
   });
 
   useEffect(() => {
-    onViewportChange(viewportOf(map));
+    onViewportChange(viewportOf(map), { userDriven: false });
   }, [map, onViewportChange]);
 
   useEffect(() => {
@@ -262,7 +200,14 @@ function MapLayers({
         pathOptions={{ color: tokens.actionPrimary, weight: 0, fillColor: tokens.actionPrimary, fillOpacity: 0.1 }}
         interactive={false}
       />
-      <HereMarker position={here} cta={reportLabel} aria={reportAria} onReport={onReport} />
+      <Marker
+        key={`here-${locale}`}
+        position={here}
+        icon={hereIcon(hereAria)}
+        interactive={false}
+        keyboard={false}
+        zIndexOffset={500}
+      />
       {grouped.singles.map((issue) => (
         <Marker
           key={`${issue.id}-${selected?.id === issue.id ? "on" : "off"}-${locale}`}
@@ -299,13 +244,11 @@ export function WardMap({
   onSelect,
   onDeselect,
   onViewportChange,
-  onReport,
   here = WARD_CENTER,
   recenterNonce = 0,
   locale = "en",
   sheetPeek = 0,
-  reportLabel,
-  reportAria,
+  hereAria,
   getMarkerLabel,
   getClusterLabel,
 }: {
@@ -313,20 +256,18 @@ export function WardMap({
   selected?: Issue;
   onSelect: (issue: Issue) => void;
   onDeselect: () => void;
-  onViewportChange: (viewport: MapViewport) => void;
-  onReport: () => void;
+  onViewportChange: (viewport: MapViewport, meta: { userDriven: boolean }) => void;
   here?: [number, number];
   recenterNonce?: number;
   locale?: Locale;
   sheetPeek?: number;
-  reportLabel: string;
-  reportAria: string;
+  hereAria: string;
   getMarkerLabel: (issue: Issue) => string;
   getClusterLabel: (count: number) => string;
 }) {
   return (
     <MapContainer center={WARD_CENTER} zoom={15} maxZoom={20} zoomControl={false} attributionControl={false} className="ward-map">
-      <CartoBasemap />
+      <Basemap />
       <MapLayers
         issues={issues}
         selected={selected}
@@ -334,14 +275,12 @@ export function WardMap({
         sheetPeek={sheetPeek}
         recenterNonce={recenterNonce}
         here={here}
-        reportLabel={reportLabel}
-        reportAria={reportAria}
+        hereAria={hereAria}
         getMarkerLabel={getMarkerLabel}
         getClusterLabel={getClusterLabel}
         onSelect={onSelect}
         onDeselect={onDeselect}
         onViewportChange={onViewportChange}
-        onReport={onReport}
       />
     </MapContainer>
   );

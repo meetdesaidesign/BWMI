@@ -7,6 +7,7 @@ import { useRef, useState } from "react";
 import { Button } from "antd-mobile";
 import { TopBar } from "./top-bar";
 import { OverlaySheet } from "./overlay-sheet";
+import { PhotoAnalysisOverlay } from "./photo-analysis-overlay";
 import { LocationCard, locationView, type LocationAction } from "./location-card";
 import type { getCopy } from "@/lib/i18n";
 import type { AnalysisStatus, Locale, LocationFix, PhotoIssue } from "@/lib/types";
@@ -20,6 +21,11 @@ export function CaptureScreen({
   location,
   routedTo,
   offline,
+  analyzing,
+  analysisSlow,
+  analysisFailed,
+  analysisComplete,
+  photoCardRef,
   onBack,
   onFile,
   onRemovePhoto,
@@ -27,6 +33,8 @@ export function CaptureScreen({
   onLocationAction,
   onRetryAnalysis,
   onContinue,
+  onFillManually,
+  onEnterDetails,
 }: {
   t: ReturnType<typeof getCopy>;
   locale: Locale;
@@ -36,6 +44,11 @@ export function CaptureScreen({
   location: LocationFix;
   routedTo?: string;
   offline: boolean;
+  analyzing: boolean;
+  analysisSlow: boolean;
+  analysisFailed: boolean;
+  analysisComplete: boolean;
+  photoCardRef: React.Ref<HTMLDivElement>;
   onBack: () => void;
   onFile: (file?: File) => void;
   onRemovePhoto: () => void;
@@ -43,6 +56,8 @@ export function CaptureScreen({
   onLocationAction: (action: LocationAction) => void;
   onRetryAnalysis: () => void;
   onContinue: () => void;
+  onFillManually: () => void;
+  onEnterDetails: () => void;
 }) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
@@ -56,6 +71,7 @@ export function CaptureScreen({
 
   const openCamera = () => cameraRef.current?.click();
   const openGallery = () => galleryRef.current?.click();
+  const openPhotoOptions = () => setOptionsOpen(true);
 
   const continueAsGuest = async () => {
     if (guestPending) return;
@@ -68,16 +84,18 @@ export function CaptureScreen({
   };
 
   /* One polite announcement channel for progress, location, and upload errors. */
-  const announcement = photoIssue === "uploadFailed"
-    ? t.uploadFailed
-    : photoIssue === "unclear"
-      ? t.photoUnclear
-      : busy
-        ? t.photoChecking
-        : `${view.status}. ${view.detail}`;
+  const announcement = analyzing
+    ? (analysisFailed ? t.analysisUnclear : analysisSlow ? t.analyzingStill : t.aiReading)
+    : photoIssue === "uploadFailed"
+      ? t.uploadFailed
+      : photoIssue === "unclear"
+        ? t.photoUnclear
+        : busy
+          ? t.photoChecking
+          : `${view.status}. ${view.detail}`;
 
   return (
-    <div className="full-page capture-page">
+    <div className={`full-page capture-page${analyzing ? " is-analyzing" : ""}`}>
       <TopBar title={t.reportProblem} onBack={onBack} />
 
       <div className="step-progress" role="progressbar" aria-label={t.stepAria} aria-valuemin={1} aria-valuemax={2} aria-valuenow={1}>
@@ -94,10 +112,20 @@ export function CaptureScreen({
       <input ref={galleryRef} hidden type="file" accept="image/*" onChange={(event) => { onFile(event.target.files?.[0]); event.target.value = ""; }} />
 
       {photo ? (
-        <div className="photo-card has-photo">
+        <div ref={photoCardRef} className={`photo-card has-photo${analyzing ? " is-analyzing" : ""}`}>
           <img src={photo} alt={t.photoAlt} />
-          {busy && <span className="photo-busy" aria-hidden><span className="spinner" /></span>}
-          <button type="button" className="photo-change" onClick={() => setOptionsOpen(true)}>
+          {analyzing && (
+            <PhotoAnalysisOverlay
+              t={t}
+              slow={analysisSlow}
+              failed={analysisFailed}
+              complete={analysisComplete}
+              onFillManually={onFillManually}
+              onEnterDetails={onEnterDetails}
+              onChangePhoto={openPhotoOptions}
+            />
+          )}
+          <button type="button" className="photo-change" onClick={openPhotoOptions}>
             <RotateCcw size={15} />{t.changePhoto}
           </button>
         </div>
@@ -128,7 +156,7 @@ export function CaptureScreen({
 
       {offline && photo && <p className="capture-offline">{t.savedOffline}</p>}
 
-      <p className="visually-hidden" role="status" aria-live="polite">{announcement}</p>
+      {!analyzing && <p className="visually-hidden" role="status" aria-live="polite">{announcement}</p>}
 
       <div className="sticky-action">
         <Button block color="primary" size="large" className="primary-button" disabled={!canContinue} onClick={onContinue}>

@@ -4,6 +4,7 @@ import { toStatusGroup } from "./public-status";
 import type { Category, DistanceKm, FilterState, Issue, LocationScope, StatusGroup } from "./types";
 
 export interface FilterContext {
+  /** The area the resident asked to search, if they tapped "Search this area". */
   bounds?: MapBounds | null;
   origin?: [number, number];
   userCoordinates?: [number, number] | null;
@@ -13,12 +14,12 @@ export interface FilterContext {
 export const ALL_CATEGORIES: Category[] = ["Roads", "Waste", "Water", "Drainage", "Lighting", "Traffic", "Parks", "Other"];
 export const ALL_STATUS_GROUPS: StatusGroup[] = ["open", "in_progress", "resolved"];
 export const DISTANCE_KM_OPTIONS: DistanceKm[] = [1, 2, 5];
-export const LOCATION_SCOPES: LocationScope[] = ["visible_map", "ward", "near_me"];
+export const LOCATION_SCOPES: LocationScope[] = ["all", "ward", "near_me"];
 
 export const defaultFilters: FilterState = {
   categories: [],
   statusGroups: ["open"],
-  locationScope: "visible_map",
+  locationScope: "all",
   distanceKm: 2,
   reported: "any",
   trust: [],
@@ -26,7 +27,7 @@ export const defaultFilters: FilterState = {
 };
 
 const LEGACY_DISTANCE: Record<string, Pick<FilterState, "locationScope" | "distanceKm">> = {
-  map: { locationScope: "visible_map", distanceKm: 2 },
+  map: { locationScope: "all", distanceKm: 2 },
   ward: { locationScope: "ward", distanceKm: 2 },
   "1km": { locationScope: "near_me", distanceKm: 1 },
   "2km": { locationScope: "near_me", distanceKm: 2 },
@@ -34,7 +35,7 @@ const LEGACY_DISTANCE: Record<string, Pick<FilterState, "locationScope" | "dista
 };
 
 export function locationReset(filters: FilterState): FilterState {
-  return { ...filters, locationScope: "visible_map", distanceKm: 2 };
+  return { ...filters, locationScope: "all", distanceKm: 2 };
 }
 
 export function filtersAreDefault(filters: FilterState) {
@@ -42,7 +43,7 @@ export function filtersAreDefault(filters: FilterState) {
     filters.categories.length === 0
     && filters.statusGroups.length === 1
     && filters.statusGroups[0] === "open"
-    && filters.locationScope === "visible_map"
+    && filters.locationScope === "all"
     && filters.distanceKm === 2
     && filters.reported === "any"
     && filters.trust.length === 0
@@ -51,7 +52,7 @@ export function filtersAreDefault(filters: FilterState) {
 }
 
 export function locationFiltersAreDefault(filters: FilterState) {
-  return filters.locationScope === "visible_map" && filters.distanceKm === 2;
+  return filters.locationScope === "all" && filters.distanceKm === 2;
 }
 
 export function advancedFilterCount(filters: FilterState) {
@@ -69,11 +70,7 @@ function inDateRange(iso: string, reported: FilterState["reported"]) {
 }
 
 function inLocationScope(issue: Issue, filters: FilterState, context?: FilterContext) {
-  if (filters.locationScope === "visible_map") {
-    const bounds = context?.bounds;
-    if (!isValidBounds(bounds)) return true;
-    return inMapBounds(issue.lat, issue.lng, bounds);
-  }
+  if (filters.locationScope === "all") return true;
   if (filters.locationScope === "ward") {
     if (context?.wardAvailable === false) return false;
     return pointInPolygon(issue.lat, issue.lng, WARD_POLYGON);
@@ -85,7 +82,11 @@ function inLocationScope(issue: Issue, filters: FilterState, context?: FilterCon
 
 export function applyFilters(issues: Issue[], filters: FilterState, context?: FilterContext) {
   const origin = context?.userCoordinates ?? context?.origin ?? WARD_CENTER;
+  // Bounds are the resident's ad-hoc "search this area", not a saved filter, so
+  // they narrow whatever scope is applied instead of replacing it.
+  const searchArea = isValidBounds(context?.bounds) ? context.bounds : null;
   const filtered = issues.filter((issue) => {
+    if (searchArea && !inMapBounds(issue.lat, issue.lng, searchArea)) return false;
     if (filters.categories.length > 0 && !filters.categories.includes(issue.category)) return false;
     if (filters.statusGroups.length > 0 && !filters.statusGroups.includes(toStatusGroup(issue.status))) return false;
     if (!inDateRange(issue.reportedAt, filters.reported)) return false;
@@ -124,7 +125,7 @@ function isDistanceKm(value: unknown): value is DistanceKm {
 }
 
 function isLocationScope(value: unknown): value is LocationScope {
-  return value === "visible_map" || value === "ward" || value === "near_me";
+  return value === "all" || value === "ward" || value === "near_me";
 }
 
 export function normalizeFilters(parsed: Partial<FilterState> & { distance?: string }): FilterState {
@@ -138,7 +139,7 @@ export function normalizeFilters(parsed: Partial<FilterState> & { distance?: str
   }
   const legacy = parsed.distance ? LEGACY_DISTANCE[parsed.distance] : undefined;
   if (legacy) return { ...merged, ...legacy };
-  return { ...merged, locationScope: "visible_map", distanceKm: isDistanceKm(parsed.distanceKm) ? parsed.distanceKm : 2 };
+  return { ...merged, locationScope: "all", distanceKm: isDistanceKm(parsed.distanceKm) ? parsed.distanceKm : 2 };
 }
 
 export function readStoredFilters(): FilterState | null {

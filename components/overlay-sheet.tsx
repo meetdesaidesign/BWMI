@@ -17,19 +17,29 @@ function focusableIn(root: HTMLElement) {
 export function OverlaySheet({
   open,
   title,
+  subtitle,
   onClose,
   children,
   footer,
   closeLabel,
   titleClassName = "type-heading-md",
+  className,
+  footerClassName,
+  showHandle = false,
+  closeAppearance = "well",
 }: {
   open: boolean;
   title: string;
+  subtitle?: ReactNode;
   onClose: (method?: OverlayDismissMethod) => void;
   children: ReactNode;
   footer?: ReactNode;
   closeLabel: string;
   titleClassName?: string;
+  className?: string;
+  footerClassName?: string;
+  showHandle?: boolean;
+  closeAppearance?: "well" | "plain";
 }) {
   const titleId = useId();
   const overlayId = useId();
@@ -152,7 +162,7 @@ export function OverlaySheet({
       <button type="button" className="overlay-sheet-backdrop" aria-label={closeLabel} onClick={() => onClose("backdrop")} />
       <section
         ref={sheetRef}
-        className="overlay-sheet"
+        className={["overlay-sheet", className].filter(Boolean).join(" ")}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -166,13 +176,24 @@ export function OverlaySheet({
           onPointerUp={onHeaderPointerUp}
           onPointerCancel={onHeaderPointerUp}
         >
-          <h2 id={titleId} className={titleClassName}>{title}</h2>
-          <button type="button" className="icon-close" onClick={() => onClose("close")} aria-label={closeLabel}>
-            <X size={22} />
-          </button>
+          {showHandle ? <div className="overlay-sheet-handle" aria-hidden /> : null}
+          <div className="overlay-sheet-title-row">
+            <div className="overlay-sheet-heading">
+              <h2 id={titleId} className={titleClassName}>{title}</h2>
+              {subtitle ? <p className="overlay-sheet-subtitle">{subtitle}</p> : null}
+            </div>
+            <button
+              type="button"
+              className={closeAppearance === "plain" ? "icon-close is-plain" : "icon-close"}
+              onClick={() => onClose("close")}
+              aria-label={closeLabel}
+            >
+              <X size={closeAppearance === "plain" ? 20 : 22} />
+            </button>
+          </div>
         </header>
         <div className="overlay-sheet-body">{children}</div>
-        {footer ? <div className="overlay-sheet-footer">{footer}</div> : null}
+        {footer ? <div className={["overlay-sheet-footer", footerClassName].filter(Boolean).join(" ")}>{footer}</div> : null}
       </section>
     </div>,
     host,

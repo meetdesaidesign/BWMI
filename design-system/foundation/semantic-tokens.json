@@ -39,6 +39,9 @@
     "warningSoft": "{color.warning.100}",
     "negative": "{color.danger.500}",
     "negativeSoft": "{color.danger.100}",
+    "identity": "{color.identity.500}",
+    "identityStrong": "{color.identity.600}",
+    "identitySoft": "{color.identity.100}",
     "info": "{color.brand.500}",
     "infoSoft": "{color.brand.50}"
   },
