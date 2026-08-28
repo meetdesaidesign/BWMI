@@ -6,7 +6,7 @@ import { Check, Clock3 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "antd-mobile";
 import { areaContext, officerDisplayName, resolveIssueAuthority } from "@/lib/authority";
-import { formatCopy, getStatusLabel, localizedField, type getCopy } from "@/lib/i18n";
+import { formatCopy, localizedField, type getCopy } from "@/lib/i18n";
 import { composeIssuePost } from "@/lib/share";
 import type { Issue, Locale } from "@/lib/types";
 import { CategoryIcon } from "./category-icon";
@@ -59,10 +59,7 @@ export function SubmittedScreen({
               </span>
             )}
           <div className="submitted-summary-copy">
-            <div className="submitted-summary-top">
-              <h2 className="submitted-summary-title">{field(issue, locale, "title")}</h2>
-              <span className="status-pill violet">{getStatusLabel(issue.status, locale)}</span>
-            </div>
+            <h2 className="submitted-summary-title">{field(issue, locale, "title")}</h2>
             <p className="submitted-summary-meta">{locationLine}</p>
             <p className="submitted-summary-id">{issue.id}</p>
           </div>
@@ -113,13 +110,13 @@ export function SubmittedScreen({
           {t.trackReport}
         </Button>
         <button type="button" className="submitted-share" onClick={() => setShareOpen(true)}>
-          {t.shareReport}
+          {t.shareOnX}
         </button>
       </div>
 
       <ShareSheet
         open={shareOpen}
-        title={t.shareReport}
+        title={t.shareOnX}
         post={post}
         t={t}
         onClose={() => setShareOpen(false)}

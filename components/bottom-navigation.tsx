@@ -72,7 +72,7 @@ export function BottomNavigation({
           {busy ? (
             <LoaderCircle className="bottom-nav-spinner" size={24} strokeWidth={2.4} aria-hidden />
           ) : (
-            <Plus className="bottom-nav-report-plus" size={48} strokeWidth={2.4} aria-hidden />
+            <Plus size={24} strokeWidth={2.4} aria-hidden />
           )}
         </span>
       </button>

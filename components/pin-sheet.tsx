@@ -27,15 +27,16 @@ export function PinSheet({
     <OverlaySheet
       open={open}
       title={t.pinTitle}
+      subtitle={t.pinHelp}
       onClose={onClose}
       closeLabel={t.close}
+      className="pin-sheet"
       footer={
         <Button block color="primary" size="large" className="primary-button" onClick={() => onConfirm(point)}>
           {t.pinConfirm}
         </Button>
       }
     >
-      <p className="type-body-md pin-help">{t.pinHelp}</p>
       {open && <PinLoader center={center ?? WARD_CENTER} onChange={setPoint} label={t.pinTitle} />}
     </OverlaySheet>
   );
