@@ -325,6 +325,10 @@ export function MineScreen({
                 onClick={() => onOpenIssue(issue)}
               />
             ))}
+            <div className="mine-list-end" aria-label={`${t.allCaughtUp}. ${t.reportUpdatesHere}`}>
+              <strong>{t.allCaughtUp}</strong>
+              <span>{t.reportUpdatesHere}</span>
+            </div>
           </div>
         )}
         </div>

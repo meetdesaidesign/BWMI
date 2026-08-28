@@ -1145,15 +1145,15 @@ p { text-wrap: pretty; }
   display: flex;
   flex-direction: column;
   padding: 0;
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-16);
   background: var(--surface-primary);
-  box-shadow: none;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.035);
   text-align: left;
   min-height: var(--touch-min);
   overflow: hidden;
   transition:
-    transform 110ms cubic-bezier(0.2, 0, 0, 1),
+    transform 170ms cubic-bezier(0.2, 0, 0, 1),
     border-color var(--motion-fast) var(--ease-standard),
     background-color var(--motion-fast) var(--ease-standard);
   user-select: none;
@@ -1161,9 +1161,9 @@ p { text-wrap: pretty; }
   touch-action: manipulation;
 }
 .problem-card:active {
-  transform: scale(0.985);
+  transform: scale(0.988);
   background: color-mix(in srgb, var(--surface-primary) 96%, var(--text-primary));
-  transition-duration: 80ms;
+  transition-duration: 150ms;
 }
 .problem-card:hover { border-color: var(--border-strong); }
 .problem-card:focus-visible {
@@ -1208,8 +1208,8 @@ p { text-wrap: pretty; }
 }
 
 .problem-card-title {
-  font-size: var(--type-body-lg-size);
-  line-height: var(--type-body-lg-line-height);
+  font-size: 17px;
+  line-height: 22px;
   letter-spacing: -0.015em;
   font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
@@ -1226,8 +1226,8 @@ p { text-wrap: pretty; }
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: var(--type-caption-size);
-  line-height: var(--type-caption-line-height);
+  font-size: 14px;
+  line-height: 19px;
   font-weight: var(--font-weight-medium);
   color: var(--text-secondary);
 }
@@ -1254,6 +1254,20 @@ p { text-wrap: pretty; }
 }
 
 .problem-card-body > .status-pill { margin-top: 2px; }
+.problem-card-review-action {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  margin-top: 2px;
+  padding: 0 var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--action-primary) 28%, transparent);
+  border-radius: var(--radius-8);
+  background: var(--feedback-info-soft);
+  color: var(--action-primary);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: var(--font-weight-semibold);
+}
 
 .problem-card-chevron {
   flex: none;
@@ -1269,12 +1283,18 @@ p { text-wrap: pretty; }
   border-top: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-3);
-  font-size: var(--type-caption-size);
-  line-height: var(--type-caption-line-height);
+  gap: var(--space-2) var(--space-3);
+  font-size: 13px;
+  line-height: 18px;
   font-weight: var(--font-weight-medium);
   color: var(--text-secondary);
+}
+.problem-card-community {
+  min-width: 0;
+  display: flex;
+  flex: 1 1 180px;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
 }
 .problem-card-stat {
   white-space: nowrap;
@@ -1282,6 +1302,7 @@ p { text-wrap: pretty; }
 }
 .problem-card > .problem-card-foot .problem-card-updated {
   margin-left: auto;
+  align-self: flex-end;
   font-weight: var(--font-weight-medium);
   color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
@@ -1973,7 +1994,7 @@ p { text-wrap: pretty; }
 }
 
 .mine-header {
-  padding: max(var(--space-3), env(safe-area-inset-top)) var(--page-padding) var(--space-3);
+  padding: max(var(--space-3), env(safe-area-inset-top)) var(--page-padding) var(--space-2);
   display: grid;
   grid-template-columns: minmax(0, 1fr) 44px;
   align-items: start;
@@ -2026,8 +2047,8 @@ p { text-wrap: pretty; }
 .mine-toolbar {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: 0 var(--page-padding) var(--space-4);
+  gap: 6px;
+  padding: 0 var(--page-padding) var(--space-3);
 }
 
 .mine-segments {
@@ -2058,7 +2079,7 @@ p { text-wrap: pretty; }
 }
 .mine-segments.is-supported .mine-segment-selection { transform: translateX(calc(100% + 2px)); }
 .mine-segment {
-  min-height: var(--touch-min);
+  min-height: 40px;
   min-width: 0;
   display: inline-flex;
   align-items: center;
@@ -2197,6 +2218,21 @@ p { text-wrap: pretty; }
 @keyframes mine-card-in { from { opacity: 0; transform: translateY(8px); } }
 
 .mine-filter-sheet { animation: mine-sheet-in 300ms cubic-bezier(0.16, 1, 0.3, 1); }
+.mine-list-end {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-4) var(--space-3) var(--space-6);
+  color: var(--text-tertiary);
+  text-align: center;
+  font-size: 13px;
+  line-height: 18px;
+}
+.mine-list-end strong {
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-semibold);
+}
 .overlay-sheet-root:has(.mine-filter-sheet) .overlay-sheet-backdrop {
   background: rgba(0, 0, 0, 0.14);
   animation: mine-backdrop-in 200ms ease-out;

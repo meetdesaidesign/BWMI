@@ -126,6 +126,8 @@ export function ProblemCard({
   distance?: string;
   onClick: () => void;
 }) {
+  const needsReview = issue.status === "awaiting_confirmation";
+
   return (
     <button
       type="button"
@@ -149,19 +151,25 @@ export function ProblemCard({
             <span className="problem-card-address">{issue.address}</span>
             {distance ? <span className="problem-card-distance">{formatCopy(t.distanceAway, { distance })}</span> : null}
           </span>
-          <span className={`status-pill ${statusTone[issue.status]}`}>{getStatusLabel(issue.status, locale)}</span>
+          {needsReview ? (
+            <span className="problem-card-review-action">{t.reviewFix}</span>
+          ) : (
+            <span className={`status-pill ${statusTone[issue.status]}`}>{getStatusLabel(issue.status, locale)}</span>
+          )}
         </span>
 
         <ChevronRight className="problem-card-chevron" size={18} strokeWidth={2} aria-hidden />
       </span>
 
       <span className="problem-card-foot">
-        <span className="problem-card-stat">
-          {countCopy(issue.supporters, t.confirmationCountOne, t.confirmationCount)}
+        <span className="problem-card-community">
+          <span className="problem-card-stat">
+            {countCopy(issue.supporters, t.confirmationCountOne, t.confirmationCount)}
+          </span>
+          {issue.mergedCount
+            ? <span className="problem-card-stat">{countCopy(issue.mergedCount, t.reportsMergedOne, t.reportsMerged)}</span>
+            : null}
         </span>
-        {issue.mergedCount
-          ? <span className="problem-card-stat">{countCopy(issue.mergedCount, t.reportsMergedOne, t.reportsMerged)}</span>
-          : null}
         <time className="problem-card-updated">{lastUpdateOf(issue)}</time>
       </span>
     </button>
