@@ -159,8 +159,19 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
     setSearchArea(viewport.bounds);
     resultBounds.current = viewport.bounds;
     setAreaStale(false);
+    // Treat an area search like opening a local result list, rather than only
+    // replacing pins. This keeps the map uncluttered while panning, then opens
+    // the cards that belong to the viewport once the resident explicitly asks.
+    const localIssues = applyFilters(issues, filters, {
+      bounds: viewport.bounds,
+      origin: viewport.center,
+      userCoordinates: gps,
+      wardAvailable: true,
+    });
+    setDeckIds(localIssues.length > 0 ? localIssues.map((issue) => issue.id) : null);
+    setHighlightedId(localIssues[0]?.id ?? null);
     track("map_search_area", { source: "map_pan" });
-  }, [viewport]);
+  }, [viewport, issues, filters, gps]);
 
   const requestHere = useCallback((recenter: boolean, source: "map" | "filter" = "map") => {
     const finish = (coords: [number, number]) => {
