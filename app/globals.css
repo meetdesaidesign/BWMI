@@ -72,6 +72,11 @@ p { text-wrap: pretty; }
   --nav-clearance: 0px;
   --nav-report-rise: 0px;
 }
+.home-stack.is-leaving .home-body {
+  opacity: 0;
+  transition: opacity 80ms ease-out;
+  pointer-events: none;
+}
 .home-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -101,6 +106,11 @@ p { text-wrap: pretty; }
   display: flex;
   flex-direction: column;
   background: var(--surface-canvas);
+  animation: report-detail-in 150ms cubic-bezier(0.2, 0, 0, 1);
+}
+@keyframes report-detail-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 .flow-layer > * {
   flex: 1 1 auto;
@@ -1143,8 +1153,17 @@ p { text-wrap: pretty; }
   min-height: var(--touch-min);
   overflow: hidden;
   transition:
+    transform 110ms cubic-bezier(0.2, 0, 0, 1),
     border-color var(--motion-fast) var(--ease-standard),
     background-color var(--motion-fast) var(--ease-standard);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.problem-card:active {
+  transform: scale(0.985);
+  background: color-mix(in srgb, var(--surface-primary) 96%, var(--text-primary));
+  transition-duration: 80ms;
 }
 .problem-card:hover { border-color: var(--border-strong); }
 .problem-card:focus-visible {
@@ -1240,7 +1259,9 @@ p { text-wrap: pretty; }
   flex: none;
   color: var(--text-tertiary);
   align-self: center;
+  transition: transform 100ms cubic-bezier(0.2, 0, 0, 1);
 }
+.problem-card:active .problem-card-chevron { transform: translateX(2px); }
 
 .problem-card > .problem-card-foot {
   margin: 0;
@@ -1958,6 +1979,19 @@ p { text-wrap: pretty; }
   align-items: start;
   gap: var(--space-3);
 }
+.mine-page > .mine-header,
+.mine-page > .mine-toolbar,
+.mine-page > .mine-feed {
+  opacity: 0;
+  transform: translateX(8px);
+}
+.mine-page.is-visible > .mine-header,
+.mine-page.is-visible > .mine-toolbar,
+.mine-page.is-visible > .mine-feed {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 200ms ease-out, transform 200ms cubic-bezier(0.2, 0, 0, 1);
+}
 .mine-heading h1 { margin: 0; letter-spacing: -0.03em; }
 .mine-heading p {
   margin: var(--space-1) 0 0;
@@ -2005,7 +2039,24 @@ p { text-wrap: pretty; }
   padding: 3px;
   background: var(--surface-secondary);
   border-radius: var(--radius-12);
+  position: relative;
+  isolation: isolate;
+  user-select: none;
 }
+.mine-segment-selection {
+  position: absolute;
+  z-index: -1;
+  inset-block: 3px;
+  left: 3px;
+  width: calc((100% - 8px) / 2);
+  border-radius: 9px;
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-sm);
+  transform: translateX(0);
+  transition: transform 210ms cubic-bezier(0.2, 0, 0, 1);
+  pointer-events: none;
+}
+.mine-segments.is-supported .mine-segment-selection { transform: translateX(calc(100% + 2px)); }
 .mine-segment {
   min-height: var(--touch-min);
   min-width: 0;
@@ -2022,6 +2073,7 @@ p { text-wrap: pretty; }
   line-height: var(--type-caption-line-height);
   font-weight: var(--font-weight-semibold);
   white-space: nowrap;
+  transition: color 150ms ease;
 }
 .mine-segment > span:first-child {
   min-width: 0;
@@ -2029,14 +2081,18 @@ p { text-wrap: pretty; }
   text-overflow: ellipsis;
 }
 .mine-segment.is-active {
-  background: var(--surface-elevated);
+  background: transparent;
   color: var(--text-primary);
-  box-shadow: var(--shadow-sm);
 }
 .mine-segment-count {
   font-variant-numeric: tabular-nums;
   color: var(--text-tertiary);
   font-weight: var(--font-weight-medium);
+  animation: mine-count-in 150ms ease-out;
+}
+@keyframes mine-count-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .mine-segment.is-active .mine-segment-count { color: var(--text-secondary); }
 
@@ -2052,7 +2108,10 @@ p { text-wrap: pretty; }
   border-radius: var(--radius-12);
   background: var(--surface-primary);
   color: var(--icon-secondary);
+  transition: transform 100ms cubic-bezier(0.2, 0, 0, 1), background-color 100ms ease;
+  -webkit-tap-highlight-color: transparent;
 }
+.mine-filter:active { transform: scale(0.94); background: var(--surface-secondary); transition-duration: 70ms; }
 .mine-filter.is-active {
   border-color: var(--border-strong);
   color: var(--text-primary);
@@ -2072,7 +2131,9 @@ p { text-wrap: pretty; }
   line-height: 14px;
   font-weight: var(--font-weight-bold);
   font-variant-numeric: tabular-nums;
+  animation: mine-badge-in 160ms cubic-bezier(0.2, 0, 0, 1);
 }
+@keyframes mine-badge-in { from { transform: scale(0.8); opacity: 0; } }
 
 .skeleton-block,
 .skeleton-line,
@@ -2116,6 +2177,32 @@ p { text-wrap: pretty; }
 .mine-feed {
   padding: 0 var(--page-padding) var(--space-2);
 }
+.mine-list-transition {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 160ms ease-out, transform 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+.mine-list-transition.is-out-left { opacity: 0; transform: translateX(-6px); transition-duration: 90ms; }
+.mine-list-transition.is-out-right { opacity: 0; transform: translateX(6px); transition-duration: 90ms; }
+.mine-list-transition.is-in-right { opacity: 0; transform: translateX(8px); transition: none; }
+.mine-list-transition.is-in-left { opacity: 0; transform: translateX(-8px); transition: none; }
+.mine-list-transition.is-applying { opacity: 0; transform: translateY(2px); }
+.mine-page.is-visible.is-first-view .mine-list-transition .problem-card {
+  animation: mine-card-in 200ms both cubic-bezier(0.2, 0, 0, 1);
+}
+.mine-page.is-visible.is-first-view .mine-list-transition .problem-card:nth-child(2) { animation-delay: 30ms; }
+.mine-page.is-visible.is-first-view .mine-list-transition .problem-card:nth-child(3) { animation-delay: 60ms; }
+.mine-page.is-visible.is-first-view .mine-list-transition .problem-card:nth-child(4) { animation-delay: 90ms; }
+.mine-page.is-visible.is-first-view .mine-list-transition .problem-card:nth-child(5) { animation-delay: 120ms; }
+@keyframes mine-card-in { from { opacity: 0; transform: translateY(8px); } }
+
+.mine-filter-sheet { animation: mine-sheet-in 300ms cubic-bezier(0.16, 1, 0.3, 1); }
+.overlay-sheet-root:has(.mine-filter-sheet) .overlay-sheet-backdrop {
+  background: rgba(0, 0, 0, 0.14);
+  animation: mine-backdrop-in 200ms ease-out;
+}
+@keyframes mine-sheet-in { from { opacity: 0; transform: translateY(32px); } }
+@keyframes mine-backdrop-in { from { opacity: 0; } }
 
 .bottom-nav {
   --nav-bar-height: var(--nav-height);
@@ -4610,4 +4697,18 @@ p { text-wrap: pretty; }
   .confirmed-badge,
   .confirmed-hero,
   .confirmed-context { animation: none; }
+  .mine-page > .mine-header,
+  .mine-page > .mine-toolbar,
+  .mine-page > .mine-feed,
+  .mine-list-transition,
+  .mine-segment-selection,
+  .problem-card,
+  .problem-card-chevron {
+    transform: none !important;
+    transition: opacity 120ms ease !important;
+  }
+  .mine-page.is-visible.is-first-view .problem-card,
+  .mine-filter-badge,
+  .mine-segment-count,
+  .mine-filter-sheet { animation: none !important; }
 }
