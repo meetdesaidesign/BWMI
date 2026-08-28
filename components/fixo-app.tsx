@@ -97,10 +97,10 @@ const blankExtraction: AIExtraction = {
 
 const staticDemoExtraction: AIExtraction = {
   category: "Roads",
-  title_en: "Deep pothole with broken road surface",
+  title_en: "Deep pothole with damaged road surface",
   title_hi: "टूटी सड़क पर गहरा गड्ढा",
   title_kn: "ಒಡೆದ ರಸ್ತೆಯಲ್ಲಿ ಆಳವಾದ ಗುಂಡಿ",
-  description_en: "A large pothole and crumbling asphalt create a serious hazard for two-wheelers.",
+  description_en: "Large pothole and crumbling asphalt may be dangerous for two-wheelers.",
   description_hi: "बड़ा गड्ढा और टूटी हुई सड़क दोपहिया वाहनों के लिए गंभीर खतरा है।",
   description_kn: "ದೊಡ್ಡ ಗುಂಡಿ ಮತ್ತು ಒಡೆದ ರಸ್ತೆ ದ್ವಿಚಕ್ರ ವಾಹನಗಳಿಗೆ ಗಂಭೀರ ಅಪಾಯ.",
   severity: "high",
@@ -601,11 +601,11 @@ export function FixoApp() {
     openReviewNow("instant");
   };
 
-  const backIssue = (id: string) => {
+  const backIssue = (id: string, showToast = true) => {
     if (backed.includes(id)) return;
     setBacked((b) => [...b, id]);
     setIssues((list) => list.map((i) => i.id === id ? { ...i, supporters: i.supporters + 1 } : i));
-    Toast.show({ content: t.supportAdded, position: "bottom" });
+    if (showToast) Toast.show({ content: t.supportAdded, position: "bottom" });
   };
 
   const unBackIssue = (id: string) => {
@@ -761,7 +761,17 @@ export function FixoApp() {
               fillMode={fillMode}
               playFill={playFill}
               onBack={() => { cancelHandoff(); setPlayFill(false); navigate("capture"); }}
-              onBackExisting={(issue) => { backIssue(issue.id); setSelectedId(issue.id); navigate("issue"); }}
+              onEditLocation={() => setPinOpen(true)}
+              onBackExisting={(issue) => {
+                backIssue(issue.id, false);
+                setSelectedId(issue.id);
+                navigate("issue");
+                Toast.show({
+                  content: <span><strong>Your support was added</strong><br />This report now has support from {issue.supporters + (backed.includes(issue.id) ? 0 : 1)} neighbours.</span>,
+                  duration: 3500,
+                  position: "bottom",
+                });
+              }}
               onSubmit={submitReport}
             />
           )}

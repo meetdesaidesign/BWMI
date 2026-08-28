@@ -146,7 +146,7 @@ const copy = {
     enterDetails: "Enter details",
     detailsFilled: "Details filled from your photo",
     detailsFilledHelp: "Check them before submitting.",
-    review: "Check details",
+    review: "Review report",
     category: "Issue type",
     title: "Title",
     description: "Details",
