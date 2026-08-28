@@ -116,6 +116,7 @@ export function ReviewScreen({
   return (
     <div className={`full-page review-page${photoReady ? "" : " is-awaiting"}`}>
       <TopBar title={t.review} onBack={onBack} />
+      <div className="report-scroll">
       <div ref={photoRef} className={`review-evidence${photoReady ? "" : " is-awaiting"}`}>
         {photo && <img src={photo} alt={t.photoAlt} />}
         {photoReady && (
@@ -186,6 +187,7 @@ export function ReviewScreen({
             onDismiss={() => setDifferent(true)}
           />
         )}
+      </div>
       </div>
       <div className="sticky-action">
         <Button block color="primary" size="large" className="primary-button" onClick={onSubmit}>
