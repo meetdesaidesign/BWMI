@@ -15,7 +15,7 @@
     "border": "{border.default}"
   },
   "filterChip": {
-    "height": "34px",
+    "height": "40px",
     "radius": "{radius.full}",
     "paddingX": "{space.3}",
     "gap": "{space.1}",
