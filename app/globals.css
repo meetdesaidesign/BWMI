@@ -2316,6 +2316,10 @@ p { text-wrap: pretty; }
   width: var(--nav-icon-size);
   height: var(--nav-icon-size);
 }
+.bottom-nav-report-badge .bottom-nav-report-plus {
+  width: 48px;
+  height: 48px;
+}
 .bottom-nav-report:active:not(:disabled) {
   transform: scale(0.96);
 }
