@@ -64,6 +64,7 @@ Copy [`.env.example`](.env.example) to `.env.local` and set only the values you 
 | `OPENAI_API_KEY` | No | Enables live image analysis. Never expose this server-side secret in the browser. |
 | `OPENAI_MODEL` | No | Selects the image-analysis model; defaults to `gpt-5.4-mini`. |
 | `NEXT_PUBLIC_CARTO_API_KEY` | No | Loads CARTO Voyager map tiles. The app falls back to Esri World Street Map tiles. |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | No | Preferred map source for India deployments; loads India-localized Google road-map cartography instead of the generic tile fallback. |
 | `NEXT_PUBLIC_SUPABASE_URL` | No | Reserved for the future persistence integration. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | No | Reserved for the future persistence integration. |
 | `SUPABASE_SERVICE_ROLE_KEY` | No | Reserved server-side credential for the future persistence integration. |
