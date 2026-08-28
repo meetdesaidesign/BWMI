@@ -36,7 +36,7 @@ jobs:
         run: mv app/api/analyze/route.ts /tmp/fixo-api-route.ts
       - run: npm run build
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: out
       - uses: actions/deploy-pages@v5
