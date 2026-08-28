@@ -29,7 +29,7 @@ export const tokens = {
   inputHeight: "48px",
   inputRadius: "12px",
   inputPaddingX: "12px",
-  topSurfaceHeight: "48px",
+  topSurfaceHeight: "56px",
   topSurfaceRadius: "12px",
   topSurfaceShadow: "0 1px 2px rgba(17, 24, 39, 0.05), 0 4px 12px rgba(17, 24, 39, 0.05)",
   mapLand: "#F6F3EC",
