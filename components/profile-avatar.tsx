@@ -1,25 +1,23 @@
-/* eslint-disable @next/next/no-img-element -- static portrait; next/image is unused in the static export */
-
-import { Check } from "lucide-react";
-import { assetPath, portraits } from "@/lib/assets";
+import { residentProfile } from "@/lib/profile";
 
 export function ProfileAvatar({
   size,
-  verified,
   alt,
 }: {
   size: number;
-  verified?: boolean;
   alt: string;
 }) {
+  const labelled = Boolean(alt);
+
   return (
-    <span className={`profile-avatar ${verified ? "is-verified" : ""}`} style={{ width: size, height: size }}>
-      <img src={assetPath(portraits.resident)} alt={alt} width={size} height={size} draggable={false} />
-      {verified ? (
-        <span className="profile-avatar-badge" aria-hidden>
-          <Check size={size >= 64 ? 12 : 9} strokeWidth={3} />
-        </span>
-      ) : null}
+    <span
+      className="profile-avatar"
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.36) }}
+      role={labelled ? "img" : undefined}
+      aria-label={labelled ? alt : undefined}
+      aria-hidden={labelled ? undefined : true}
+    >
+      <span className="profile-avatar-initials">{residentProfile.initials}</span>
     </span>
   );
 }

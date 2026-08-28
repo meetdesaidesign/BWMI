@@ -144,7 +144,7 @@ export function FilterSheet({
 
   const title = panel === "type" ? t.filterAllTypes
     : panel === "status" ? t.filterStatus
-      : panel === "distance" ? t.filterIssues
+      : panel === "distance" ? t.filterDistance
         : t.filterMore;
 
   const toggleCategory = (category: Category) => {
@@ -317,7 +317,7 @@ export function FilterSheet({
           <section className="filter-section">
             <h3 id={scopeLabelId} className="filter-section-label">{t.filterShowFrom}</h3>
             <div className="choice-grid" role="radiogroup" aria-labelledby={scopeLabelId}>
-              <RadioChip selected={draft.locationScope === "visible_map"} label={t.distanceMap} onClick={() => setScope("visible_map")} />
+              <RadioChip selected={draft.locationScope === "all"} label={t.scopeAll} onClick={() => setScope("all")} />
               <RadioChip
                 selected={draft.locationScope === "ward"}
                 label={t.distanceWard}

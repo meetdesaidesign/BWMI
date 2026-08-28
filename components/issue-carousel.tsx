@@ -3,7 +3,14 @@
 /* eslint-disable @next/next/no-img-element -- issue evidence thumbnails include local SVGs and data URLs */
 
 import { X } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useRef, type KeyboardEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { track } from "@/lib/analytics";
 import { distanceMeters, formatDistance } from "@/lib/geo";
 import { formatCopy, getCategoryLabel, type getCopy } from "@/lib/i18n";
@@ -18,6 +25,9 @@ function titleOf(issue: Issue, locale: Locale) {
 function prefersReducedMotion() {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
+
+/** Past this, the pointer is a swipe. Below it, the tap still belongs to the card. */
+const DRAG_THRESHOLD_PX = 6;
 
 /**
  * The deck only exists once a pin is chosen, so it never competes with the map
@@ -49,10 +59,24 @@ export function IssueCarousel({
   const dockRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const settleTimer = useRef(0);
+  const snapTimer = useRef(0);
   // Programmatic scrolls fire the same events as a swipe, so the settle handler
   // has to know which one it is watching or selection would fight the scroller.
   const programmatic = useRef(true);
   const committed = useRef(selectedId);
+  // A mouse cannot flick a scroller, so on the desktop demo the drag is hand-run:
+  // the pointer carries the deck, and letting go picks the card it landed on.
+  const dragRef = useRef<{
+    id: number;
+    startX: number;
+    startScroll: number;
+    startIndex: number;
+    lastX: number;
+    lastT: number;
+    velocity: number;
+    moved: number;
+  } | null>(null);
+  const suppressClick = useRef(false);
 
   const index = issues.findIndex((issue) => issue.id === selectedId);
   const localeTag = locale === "en" ? "en-IN" : locale === "hi" ? "hi-IN" : "kn-IN";
@@ -92,7 +116,37 @@ export function IssueCarousel({
     return () => observer.disconnect();
   }, [onHeight]);
 
-  useEffect(() => () => window.clearTimeout(settleTimer.current), []);
+  useEffect(() => () => {
+    window.clearTimeout(settleTimer.current);
+    window.clearTimeout(snapTimer.current);
+  }, []);
+
+  // Whichever card sits closest to the centre line is the one the deck points at,
+  // whether it got there by scroll, by keyboard, or by being dragged.
+  const nearestIndex = useCallback(() => {
+    const root = scrollerRef.current;
+    if (!root) return -1;
+    const middle = root.getBoundingClientRect().left + root.clientWidth / 2;
+    let best = -1;
+    let nearest = Infinity;
+    root.querySelectorAll<HTMLElement>("[data-issue-id]").forEach((card, position) => {
+      const box = card.getBoundingClientRect();
+      const gap = Math.abs(box.left + box.width / 2 - middle);
+      if (gap < nearest) {
+        nearest = gap;
+        best = position;
+      }
+    });
+    return best;
+  }, []);
+
+  const commit = useCallback((to: number, from: number) => {
+    const next = issues[to];
+    if (!next || next.id === committed.current) return;
+    committed.current = next.id;
+    track("map_card_swiped", { direction: to > from ? "next" : "previous", position: to + 1, count: issues.length });
+    onSelect(next);
+  }, [issues, onSelect]);
 
   const settle = () => {
     const root = scrollerRef.current;
@@ -101,24 +155,84 @@ export function IssueCarousel({
       programmatic.current = false;
       return;
     }
-    const middle = root.getBoundingClientRect().left + root.clientWidth / 2;
-    let nearestId = selectedId;
-    let nearest = Infinity;
-    root.querySelectorAll<HTMLElement>("[data-issue-id]").forEach((card) => {
-      const box = card.getBoundingClientRect();
-      const gap = Math.abs(box.left + box.width / 2 - middle);
-      if (gap < nearest) {
-        nearest = gap;
-        nearestId = card.dataset.issueId ?? selectedId;
-      }
-    });
-    if (nearestId === selectedId) return;
-    const next = issues.find((issue) => issue.id === nearestId);
-    if (!next) return;
-    const to = issues.indexOf(next);
-    committed.current = next.id;
-    track("map_card_swiped", { direction: to > index ? "next" : "previous", position: to + 1, count: issues.length });
-    onSelect(next);
+    if (dragRef.current) return;
+    const to = nearestIndex();
+    if (to >= 0) commit(to, index);
+  };
+
+  const endDrag = useCallback((timeStamp: number) => {
+    const root = scrollerRef.current;
+    const drag = dragRef.current;
+    if (!root || !drag) return;
+    dragRef.current = null;
+    root.classList.remove("is-dragging");
+    if (root.hasPointerCapture(drag.id)) root.releasePointerCapture(drag.id);
+
+    // A tap is not a swipe. Leave the click for the card so it can open.
+    if (drag.moved <= DRAG_THRESHOLD_PX) return;
+
+    // A short flick should still advance: without this a quick nudge would land
+    // back on the card it started from and read as the deck refusing to move.
+    const stale = timeStamp - drag.lastT > 100;
+    const flick = !stale && Math.abs(drag.velocity) > 0.35;
+    let to = nearestIndex();
+    if (to < 0) to = drag.startIndex;
+    if (flick && to === drag.startIndex) to += drag.velocity < 0 ? 1 : -1;
+    to = Math.max(0, Math.min(issues.length - 1, to));
+
+    const target = issues[to];
+    if (target) {
+      commit(to, drag.startIndex);
+      centerOn(target.id, prefersReducedMotion() ? "auto" : "smooth");
+    }
+    // Snapping stays off until the glide finishes, or re-arming it mid-scroll
+    // would yank the deck to the nearest card instead of the chosen one.
+    window.clearTimeout(snapTimer.current);
+    snapTimer.current = window.setTimeout(() => root.classList.remove("is-settling"), 420);
+  }, [centerOn, commit, issues, nearestIndex]);
+
+  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    // Touch already has momentum and snapping of its own; this is for cursors.
+    if (event.pointerType === "touch" || event.button !== 0) return;
+    const root = scrollerRef.current;
+    if (!root) return;
+    window.clearTimeout(settleTimer.current);
+    window.clearTimeout(snapTimer.current);
+    suppressClick.current = false;
+    // Do not capture yet. A mouse cannot flick a scroller, but capturing on
+    // mousedown steals the click from the card. Capture starts once this
+    // pointer has actually moved far enough to be a swipe.
+    dragRef.current = {
+      id: event.pointerId,
+      startX: event.clientX,
+      startScroll: root.scrollLeft,
+      startIndex: Math.max(0, nearestIndex()),
+      lastX: event.clientX,
+      lastT: event.timeStamp,
+      velocity: 0,
+      moved: 0,
+    };
+  };
+
+  const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    const root = scrollerRef.current;
+    if (!drag || !root || event.pointerId !== drag.id) return;
+    const dx = event.clientX - drag.startX;
+    drag.moved = Math.max(drag.moved, Math.abs(dx));
+    const elapsed = event.timeStamp - drag.lastT;
+    if (elapsed > 0) drag.velocity = (event.clientX - drag.lastX) / elapsed;
+    drag.lastX = event.clientX;
+    drag.lastT = event.timeStamp;
+    if (drag.moved <= DRAG_THRESHOLD_PX) return;
+    // Past a few pixels the gesture is a swipe, so the click it ends with is not
+    // a tap on whichever card happens to be under the cursor.
+    suppressClick.current = true;
+    if (!root.hasPointerCapture(event.pointerId)) {
+      root.setPointerCapture(event.pointerId);
+      root.classList.add("is-dragging", "is-settling");
+    }
+    root.scrollLeft = drag.startScroll - dx;
   };
 
   const step = (delta: number) => {
@@ -157,6 +271,18 @@ export function IssueCarousel({
           window.clearTimeout(settleTimer.current);
           settleTimer.current = window.setTimeout(settle, 120);
         }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={(event) => endDrag(event.timeStamp)}
+        onPointerCancel={(event) => endDrag(event.timeStamp)}
+        onLostPointerCapture={(event) => endDrag(event.timeStamp)}
+        onDragStart={(event) => event.preventDefault()}
+        onClickCapture={(event) => {
+          if (!suppressClick.current) return;
+          suppressClick.current = false;
+          event.preventDefault();
+          event.stopPropagation();
+        }}
         onKeyDown={onKeyDown}
       >
         {issues.map((issue) => {
@@ -175,7 +301,7 @@ export function IssueCarousel({
             >
               <span className="carousel-card-media">
                 {issue.image
-                  ? <img src={issue.image} alt="" loading={selected ? "eager" : "lazy"} />
+                  ? <img src={issue.image} alt="" draggable={false} loading={selected ? "eager" : "lazy"} />
                   : <span className="carousel-card-fallback"><CategoryIcon category={issue.category} size={32} /></span>}
               </span>
               <span className="carousel-card-body problem-card-body">

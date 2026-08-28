@@ -12,7 +12,7 @@ export const areaContext: AreaContext = {
   boundarySource: L("Greater Bengaluru Authority ward map", "ग्रेटर बेंगलुरु प्राधिकरण वार्ड मैप", "ಗ್ರೇಟರ್ ಬೆಂಗಳೂರು ಪ್ರಾಧಿಕಾರ ವಾರ್ಡ್ ನಕ್ಷೆ"),
   authority: {
     id: "auth-bscc-w14",
-    organizationName: L("Bengaluru South City Corporation", "बेंगलुरु दक्षिण शहर निगम", "ಬೆಂಗಳೂರು ದಕ್ಷಿಣ ನಗರ ನಿಗಮ"),
+    organizationName: L("Greater Bengaluru Authority", "ग्रेटर बेंगलुरु प्राधिकरण", "ಗ್ರೇಟರ್ ಬೆಂಗಳೂರು ಪ್ರಾಧಿಕಾರ"),
     departmentName: L("Ward 14 office", "वार्ड 14 कार्यालय", "ವಾರ್ಡ್ 14 ಕಚೇರಿ"),
     roleName: L("Ward Officer", "वार्ड अधिकारी", "ವಾರ್ಡ್ ಅಧಿಕಾರಿ"),
     officerName: L("Kavitha N.", "कविता एन.", "ಕವಿತಾ ಎನ್."),
@@ -36,12 +36,12 @@ export const areaContext: AreaContext = {
     {
       role: "mla",
       title: L("MLA", "विधायक", "ಶಾಸಕ"),
-      name: L("Jayanagar constituency office", "जयनगर निर्वाचन क्षेत्र कार्यालय", "ಜಯನಗರ ಕ್ಷೇತ್ರ ಕಚೇರಿ"),
-      handle: "@JayanagarMLA",
+      name: L("Ravi Menon", "रवि मेनन", "ರವಿ ಮೆನನ್"),
+      handle: "@RaviMenon_MLA",
     },
   ],
   escalationRole: L("Zonal commissioner office", "क्षेत्रीय आयुक्त कार्यालय", "ವಲಯ ಆಯುಕ್ತರ ಕಚೇರಿ"),
-  escalationOffice: L("Bengaluru South City Corporation", "बेंगलुरु दक्षिण शहर निगम", "ಬೆಂಗಳೂರು ದಕ್ಷಿಣ ನಗರ ನಿಗಮ"),
+  escalationOffice: L("Bengaluru South Zone", "बेंगलुरु दक्षिण क्षेत्र", "ಬೆಂಗಳೂರು ದಕ್ಷಿಣ ವಲಯ"),
 };
 
 const PWD: Authority = {

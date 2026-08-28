@@ -5,7 +5,7 @@ export type IssueStatus = "reported" | "acknowledged" | "in_progress" | "awaitin
 
 export type PublicStatus = "reported" | "verified" | "assigned" | "in_progress" | "resolved" | "reopened";
 export type StatusGroup = "open" | "in_progress" | "resolved";
-export type LocationScope = "visible_map" | "ward" | "near_me";
+export type LocationScope = "all" | "ward" | "near_me";
 export type DistanceKm = 1 | 2 | 5;
 export type DateFilter = "any" | "today" | "7d" | "30d";
 export type TrustFilter = "gov" | "community";
@@ -37,6 +37,8 @@ export interface Issue {
   lat: number;
   lng: number;
   image: string;
+  /** Completion photo from the team, when one exists. Never a generated stand-in. */
+  resolutionImage?: string;
   supporters: number;
   aliases: string[];
   status: IssueStatus;

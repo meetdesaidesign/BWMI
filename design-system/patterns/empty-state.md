@@ -1,8 +1,10 @@
 # Empty state
 
-Use `asset.emptyState` (184px) so a future illustration can drop in without layout shift.
+Use a compact 56px icon well on My Reports so the list stays top-aligned. The 184px `asset.emptyState` slot remains available for illustrated nearby emptiness.
 
-- Icon or placeholder occupies the slot.
-- Heading uses `heading.sm`; body uses `body.md`. Copy: what is empty + what the user can do (`empty` / `emptyHelp` in `lib/i18n.ts`). Never treat normal emptiness as an error.
-- One optional primary action.
+- Icon or placeholder occupies the slot. Colour is secondary, not brand.
+- Heading uses `heading.sm`; body uses `body.md`. Copy: what is empty + what the user can do. Never treat normal emptiness as an error.
+- Raised tab: `empty` / `emptyRaisedHelp` / `reportIssue`.
+- Supported tab: `emptySupported` / `emptySupportedHelp` / `emptySupportedCta`.
+- One primary action. Filtered-empty uses `noFilterResults` and `clearFilters`.
 - Decorative illustration: empty alt. Meaningful illustration: concise alt.

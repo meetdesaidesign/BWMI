@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.0 — 28 August 2026
+
+My Reports became a compact tracking list: heading-md title, Raised/Supported segments with counts, and a filter/sort control. Report cards use 16px radius, 88px evidence, a status pill, and a footer for confirmations / merged reports / last update. Bottom navigation is a flat bar with a hairline top border; the primary colour is reserved for the active destination and the Report circle.
+
+## 1.5.0 — 27 August 2026
+
+Bottom navigation is shorter (56px, 48px landscape). Report is a 44px circle in the dock — the only purple fill. Selected destinations use a 28px tint behind the icon, not a full-slot pill. Destination label: My Reports.
+
 ## 1.4.0 — 27 August 2026
 
 Bottom navigation became a floating dock: Nearby and My reports in a glass pill, Report as a separate circular action. Added `nav.inset`, `nav.insetX`, `nav.gap`. Control height 64px (56px landscape).

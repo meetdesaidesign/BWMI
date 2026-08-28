@@ -4,10 +4,6 @@ export function assetPath(path: string) {
   return `${basePath}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-export const portraits = {
-  resident: "/images/resident-avatar.png",
-} as const;
-
 export const brand = {
   markPurple: "/brand/fixo-mark-purple.svg",
   markBlack: "/brand/fixo-mark-black.svg",

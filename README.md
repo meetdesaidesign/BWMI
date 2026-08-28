@@ -18,7 +18,7 @@ Open `http://localhost:3000`. Without an `OPENAI_API_KEY`, image analysis uses a
 
 1. Open a nearby issue to see its updates, or tap **I see this too**.
 2. Tap Report, add a photo, allow or decline location, and check the details.
-3. Enter any demo contact value and submit the report.
+3. Check the details and submit the report.
 4. Open the waste issue near the metro gate to confirm the fix or reopen it.
 5. Confirm it to make, share, or download a 1080×1920 card.
 6. Switch language from the header. The control is labelled Language and shows हिंदी / English.

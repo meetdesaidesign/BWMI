@@ -1,24 +1,19 @@
 "use client";
 
 import { SlidersHorizontal } from "lucide-react";
-import { getCategoryLabel, getStatusGroupLabel, type getCopy } from "@/lib/i18n";
+import { formatCopy, type getCopy } from "@/lib/i18n";
 import { advancedFilterCount } from "@/lib/filters";
 import type { FilterState, Locale } from "@/lib/types";
 
 export type FilterPanel = "type" | "status" | "distance" | "more";
 
-function locationChipLabel(filters: FilterState, t: ReturnType<typeof getCopy>) {
-  if (filters.locationScope === "ward") return t.distanceWard;
-  if (filters.locationScope === "near_me") {
-    if (filters.distanceKm === 1) return t.distance1k;
-    if (filters.distanceKm === 2) return t.distance2k;
-    return t.distance5k;
-  }
-  return t.distanceMap;
-}
-
+/**
+ * Compact chips. The labels stay fixed — "Issue type", never the categories
+ * chosen — so the row keeps one short line however much is filtered, and the
+ * map behind it keeps its width. A tint carries the "this one is narrowing
+ * results" signal that a spelled-out value used to carry.
+ */
 export function FilterBar({
-  locale,
   t,
   filters,
   onOpen,
@@ -28,38 +23,48 @@ export function FilterBar({
   filters: FilterState;
   onOpen: (panel: FilterPanel) => void;
 }) {
-  const typeLabel = filters.categories.length === 0
-    ? t.filterAllTypes
-    : filters.categories.length === 1
-      ? getCategoryLabel(filters.categories[0], locale)
-      : `${filters.categories.length}`;
-  const statusLabel = filters.statusGroups.length === 0
-    ? t.filterStatus
-    : filters.statusGroups.map((group) => getStatusGroupLabel(group, locale)).join(", ");
-  const distanceLabel = locationChipLabel(filters, t);
+  const typeCount = filters.categories.length;
+  const statusActive = filters.statusGroups.length !== 1 || filters.statusGroups[0] !== "open";
+  const distanceActive = filters.locationScope !== "all";
   const moreCount = advancedFilterCount(filters);
-  const locationActive = filters.locationScope !== "visible_map";
 
   return (
-    <div className="filter-row" role="toolbar" aria-label={t.filterMore}>
-      <button type="button" className={`filter-chip ${filters.categories.length ? "is-active" : ""}`} aria-pressed={filters.categories.length > 0} onClick={() => onOpen("type")}>
-        {typeLabel}
+    <div className="filter-row" role="toolbar" aria-label={t.filterIssues}>
+      <button
+        type="button"
+        className={`filter-chip ${typeCount ? "is-active" : ""}`}
+        aria-pressed={typeCount > 0}
+        aria-label={typeCount ? formatCopy(t.filterTypeActive, { count: typeCount }) : t.filterAllTypes}
+        onClick={() => onOpen("type")}
+      >
+        {t.filterAllTypes}
       </button>
-      <button type="button" className={`filter-chip ${filters.statusGroups.length !== 1 || filters.statusGroups[0] !== "open" ? "is-active" : ""}`} aria-pressed={filters.statusGroups.length !== 1 || filters.statusGroups[0] !== "open"} onClick={() => onOpen("status")}>
-        {statusLabel}
+      <button
+        type="button"
+        className={`filter-chip ${statusActive ? "is-active" : ""}`}
+        aria-pressed={statusActive}
+        aria-label={statusActive ? formatCopy(t.filterStatusActive, { count: filters.statusGroups.length }) : t.filterStatus}
+        onClick={() => onOpen("status")}
+      >
+        {t.filterStatus}
       </button>
-      <button type="button" className={`filter-chip ${locationActive ? "is-active" : ""}`} aria-pressed={locationActive} onClick={() => onOpen("distance")}>
-        {distanceLabel}
+      <button
+        type="button"
+        className={`filter-chip ${distanceActive ? "is-active" : ""}`}
+        aria-pressed={distanceActive}
+        onClick={() => onOpen("distance")}
+      >
+        {t.filterDistance}
       </button>
       <button
         type="button"
         className={`filter-chip is-icon ${moreCount ? "is-active" : ""}`}
         aria-pressed={moreCount > 0}
-        aria-label={t.filterMore}
+        aria-label={moreCount ? formatCopy(t.filterMoreActive, { count: moreCount }) : t.filterMore}
         title={t.filterMore}
         onClick={() => onOpen("more")}
       >
-        <SlidersHorizontal size={17} strokeWidth={2} aria-hidden />
+        <SlidersHorizontal size={15} strokeWidth={2} aria-hidden />
         {moreCount > 0 ? <span className="filter-badge">{moreCount}</span> : null}
       </button>
     </div>

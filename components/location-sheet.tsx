@@ -30,71 +30,91 @@ export function LocationSheet({
 }) {
   const authority = area.authority;
   const officer = officerDisplayName(authority, locale);
-  const assigned = authority.routingPending
-    ? t.routingInProgress
-    : officer
-      ? `${authority.roleName[locale]} · ${officer}`
-      : authority.roleName[locale];
   const tel = authority.officialContact ? telHref(authority.officialContact) : null;
+  const verified = formatCopy(t.lastVerified, { date: formatVerifiedDate(authority.verifiedAt, locale) });
 
   return (
-    <OverlaySheet open={open} title={area.areaName[locale]} onClose={onClose} closeLabel={t.close}>
-      <dl className="account-dl">
-        <div>
-          <dt>{t.responsibleAuthority}</dt>
-          <dd>{authority.organizationName[locale]}</dd>
-        </div>
-        <div>
-          <dt>{t.wardLabel}</dt>
-          <dd>{area.ward[locale]} · {area.areaName[locale]}</dd>
-        </div>
-        <div>
-          <dt>{t.officeLabel}</dt>
-          <dd>{authority.departmentName[locale]}</dd>
-        </div>
-        <div>
-          <dt>{t.assigned}</dt>
-          <dd>{assigned}</dd>
-        </div>
-      </dl>
-
-      {tel || authority.sourceUrl ? (
-        <div className="location-actions">
-          {tel ? (
-            <a className="location-action" href={tel}>
-              <Phone size={16} aria-hidden />{authority.officialContact}
-            </a>
-          ) : null}
+    <OverlaySheet
+      open={open}
+      title={area.areaName[locale]}
+      subtitle={area.ward[locale]}
+      onClose={onClose}
+      closeLabel={t.close}
+      className="is-area-profile"
+      showHandle
+      closeAppearance="plain"
+      footerClassName="is-quiet"
+      footer={
+        <p className="area-source">
+          {verified}
           {authority.sourceUrl ? (
-            <a className="location-action" href={authority.sourceUrl} target="_blank" rel="noreferrer">
-              <ExternalLink size={16} aria-hidden />{authority.sourceName}
-            </a>
+            <>
+              {" · "}
+              <a href={authority.sourceUrl} target="_blank" rel="noreferrer">
+                {t.wardDataSource}
+                <ExternalLink size={11} strokeWidth={2.25} aria-hidden />
+              </a>
+            </>
           ) : null}
+        </p>
+      }
+    >
+      <article className="area-authority-card">
+        <div className="area-authority-who">
+          <p className="area-kicker">{t.responsibleAuthority}</p>
+          <p className="area-authority-org">{authority.organizationName[locale]}</p>
+          <p className="area-authority-office">{authority.departmentName[locale]}</p>
         </div>
-      ) : null}
+        <div className="area-officer">
+          <p className="area-officer-name">
+            {authority.routingPending ? t.routingInProgress : officer ?? t.officerPending}
+          </p>
+          {authority.routingPending ? null : (
+            <p className="area-officer-role">{authority.roleName[locale]}</p>
+          )}
+        </div>
+        {tel || authority.sourceUrl ? (
+          <div className="area-authority-actions">
+            {tel ? (
+              <a className="area-action" href={tel} aria-label={`${t.callOffice}, ${authority.officialContact}`}>
+                <Phone size={16} strokeWidth={2.25} aria-hidden />
+                {t.callOffice}
+              </a>
+            ) : null}
+            {authority.sourceUrl ? (
+              <a className="area-action" href={authority.sourceUrl} target="_blank" rel="noreferrer">
+                <ExternalLink size={16} strokeWidth={2.25} aria-hidden />
+                {t.viewAuthority}
+              </a>
+            ) : null}
+          </div>
+        ) : null}
+      </article>
 
-      <section className="account-section">
-        <h3 className="type-heading-sm">{t.escalationPath}</h3>
-        <p className="type-body-md">{area.escalationRole[locale]}</p>
-        <p className="type-caption">{area.escalationOffice[locale]} · {authority.officialContact}</p>
+      <section className="area-escalate" aria-labelledby="area-escalate-heading">
+        <h3 id="area-escalate-heading" className="area-escalate-title">{t.ifUnresolved}</h3>
+        <p className="area-escalate-role">{area.escalationRole[locale]}</p>
+        <p className="area-escalate-office">{area.escalationOffice[locale]}</p>
+        {tel ? (
+          <a className="area-escalate-call" href={tel}>
+            <Phone size={16} strokeWidth={2.25} aria-hidden />
+            {formatCopy(t.callNumber, { number: authority.officialContact })}
+          </a>
+        ) : null}
       </section>
 
-      <section className="account-section">
-        <h3 className="type-heading-sm">{t.yourRepresentatives}</h3>
-        <p className="type-caption">{t.representativesHelp}</p>
-        <ul className="rep-list">
+      <section className="area-reps" aria-labelledby="area-reps-heading">
+        <h3 id="area-reps-heading" className="area-kicker">{t.yourRepresentatives}</h3>
+        <ul className="area-rep-list">
           {area.representatives.map((rep) => (
             <li key={rep.role}>
-              <strong>{rep.title[locale]}</strong>
-              <span>{rep.vacant || !rep.name ? t.positionVacant : rep.name[locale]}</span>
+              <span className="area-rep-role">{rep.title[locale]}</span>
+              <span className="area-rep-name">{rep.vacant || !rep.name ? t.positionVacant : rep.name[locale]}</span>
             </li>
           ))}
         </ul>
+        <p className="area-reps-note">{t.representativesHelp}</p>
       </section>
-
-      <p className="sheet-footnote type-caption">
-        {area.boundarySource[locale]} · {formatCopy(t.lastVerified, { date: formatVerifiedDate(authority.verifiedAt, locale) })}
-      </p>
     </OverlaySheet>
   );
 }

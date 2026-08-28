@@ -67,6 +67,21 @@ export function isValidBounds(bounds?: MapBounds | null): bounds is MapBounds {
   return Number.isFinite(latSpan) && Number.isFinite(lngSpan) && latSpan > 0.0005 && lngSpan > 0.0005;
 }
 
+/**
+ * Has the resident moved far enough that the results they are looking at no
+ * longer describe what is on screen? A quarter-viewport shift or a real zoom
+ * step counts; the drift of a fingertip settling does not.
+ */
+export function boundsMovedAway(from: MapBounds, to: MapBounds) {
+  const latSpan = to.north - to.south;
+  const lngSpan = to.east - to.west;
+  if (!(latSpan > 0) || !(lngSpan > 0)) return false;
+  const latShift = Math.abs((to.north + to.south) / 2 - (from.north + from.south) / 2);
+  const lngShift = Math.abs((to.east + to.west) / 2 - (from.east + from.west) / 2);
+  const zoomShift = Math.abs((from.north - from.south) - latSpan);
+  return latShift > latSpan * 0.25 || lngShift > lngSpan * 0.25 || zoomShift > latSpan * 0.2;
+}
+
 /** Ray-cast test. Polygon vertices are [lat, lng]. */
 export function pointInPolygon(lat: number, lng: number, polygon: [number, number][]) {
   let inside = false;

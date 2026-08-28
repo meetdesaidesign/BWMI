@@ -14,6 +14,14 @@
     "paddingX": "{space.4}",
     "border": "{border.default}"
   },
+  "filterChip": {
+    "height": "34px",
+    "radius": "{radius.full}",
+    "paddingX": "{space.3}",
+    "gap": "{space.1}",
+    "shadow": "{shadow.sm}",
+    "touchPad": "6px"
+  },
   "button": {
     "height": "52px",
     "radius": "{radius.12}",
@@ -33,6 +41,17 @@
     "radius": "{radius.12}",
     "paddingX": "{space.3}"
   },
+  "topSurface": {
+    "height": "48px",
+    "radius": "{radius.12}",
+    "shadow": "0 1px 2px rgba(17, 24, 39, 0.05), 0 4px 12px rgba(17, 24, 39, 0.05)"
+  },
+  "map": {
+    "land": "#F6F3EC",
+    "labelOpacity": "0.5",
+    "labelMinZoom": "15",
+    "labelMaxZoom": "17"
+  },
   "marker": {
     "size": "30px",
     "sizeSelected": "48px",
@@ -45,9 +64,9 @@
   },
   "carousel": {
     "height": "196px",
-    "cardWidth": "min(78cqw, 300px)",
-    "gap": "{space.3}",
-    "scaleIdle": "0.86"
+    "cardWidth": "min(84cqw, 324px)",
+    "gap": "{space.1}",
+    "scaleIdle": "0.9"
   },
   "asset": {
     "filterTile": "80px",

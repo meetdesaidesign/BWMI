@@ -1,115 +1,226 @@
 "use client";
 
-import { Check, Copy, Download, Share2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { BrandWordmark } from "./brand-mark";
-import { tokens } from "@/design-system/generated/tokens";
+import { Check, Copy, Instagram, Loader2, Lock, Save } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Toast } from "antd-mobile";
 import { assetPath, brand } from "@/lib/assets";
-import type { Locale } from "@/lib/types";
 import type { getCopy } from "@/lib/i18n";
+import { canvasToBlob, renderStoryCard, type StoryKind } from "@/lib/story-card";
+import type { Issue, Locale } from "@/lib/types";
 
 type Copy = ReturnType<typeof getCopy>;
+type Action = "share" | "save" | "copy";
 
-export function StoryCard({ t }: { locale: Locale; t: Copy }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const logoRef = useRef<HTMLImageElement | null>(null);
-  const [copied, setCopied] = useState(false);
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("image"));
+    image.src = src;
+  });
+}
+
+function isAbort(error: unknown) {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+export function StoryCard({ issue, locale, t }: { issue: Issue; locale: Locale; t: Copy }) {
+  const fixCanvasRef = useRef<HTMLCanvasElement>(null);
+  const wardCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [kind, setKind] = useState<StoryKind>("fix");
+  const [ready, setReady] = useState(false);
+  const [busy, setBusy] = useState<Action | null>(null);
+  const [done, setDone] = useState<Action | null>(null);
+  const [slide, setSlide] = useState<"in" | "from-left" | "from-right">("in");
+
+  const activeCanvas = () => (kind === "fix" ? fixCanvasRef.current : wardCanvasRef.current);
+
+  const paint = useCallback(async () => {
+    const fixCanvas = fixCanvasRef.current;
+    const wardCanvas = wardCanvasRef.current;
+    if (!fixCanvas || !wardCanvas) return;
+    setReady(false);
+    try {
+      const [logo, reported] = await Promise.all([
+        loadImage(assetPath(brand.logoHorizontal)).catch(() => null),
+        loadImage(assetPath(issue.image)).catch(() => null),
+      ]);
+      const resolved = issue.resolutionImage
+        ? await loadImage(assetPath(issue.resolutionImage)).catch(() => null)
+        : null;
+      const assets = { logo, reported, resolved };
+      await Promise.all([
+        renderStoryCard(fixCanvas, "fix", issue, locale, t, assets),
+        renderStoryCard(wardCanvas, "ward", issue, locale, t, assets),
+      ]);
+      setReady(true);
+    } catch {
+      setReady(false);
+    }
+  }, [issue, locale, t]);
 
   useEffect(() => {
-    const img = new Image();
-    img.src = assetPath(brand.logoHorizontalPng);
-    img.onload = () => {
-      logoRef.current = img;
-    };
-  }, []);
+    void paint();
+  }, [paint]);
 
-  const render = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-    canvas.width = 1080;
-    canvas.height = 1920;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
-    ctx.fillStyle = tokens.colorGray950;
-    ctx.fillRect(0, 0, 1080, 1920);
-    ctx.fillStyle = tokens.colorGray0;
-    ctx.font = "600 34px sans-serif";
-    ctx.fillText(t.storyKicker, 80, 130);
-    ctx.font = "700 330px sans-serif";
-    ctx.fillText("47", 62, 850);
-    ctx.font = "500 72px sans-serif";
-    const headlineLines: string[] = [];
-    let current = "";
-    for (const word of t.storyHeadline.split(" ")) {
-      const next = current ? `${current} ${word}` : word;
-      if (ctx.measureText(next).width > 900 && current) {
-        headlineLines.push(current);
-        current = word;
-      } else {
-        current = next;
-      }
-    }
-    if (current) headlineLines.push(current);
-    headlineLines.forEach((line, i) => ctx.fillText(line, 80, 1030 + i * 92));
-    ctx.fillStyle = tokens.colorGray400;
-    ctx.font = "400 34px sans-serif";
-    ctx.fillText(t.storyConfirmed, 80, 1350);
-    ctx.strokeStyle = tokens.colorGray800;
-    ctx.beginPath(); ctx.moveTo(80, 1600); ctx.lineTo(1000, 1600); ctx.stroke();
-    const logo = logoRef.current;
-    if (logo) {
-      const height = 96;
-      const width = (logo.naturalWidth / logo.naturalHeight) * height;
-      ctx.drawImage(logo, 48, 1636, width, height);
-    }
-    ctx.fillStyle = tokens.colorGray400;
-    ctx.font = "400 27px sans-serif";
-    ctx.fillText(t.storyUrl, 86, 1768);
-    return canvas;
+  const switchKind = (next: StoryKind) => {
+    if (next === kind) return;
+    setSlide(next === "ward" ? "from-right" : "from-left");
+    setKind(next);
   };
 
-  const download = () => {
-    const canvas = render();
-    if (!canvas) return;
+  const downloadCanvas = (canvas: HTMLCanvasElement) => {
     const a = document.createElement("a");
-    a.download = "fixo-share-card.png";
+    a.download = "fixo-story.png";
     a.href = canvas.toDataURL("image/png");
     a.click();
   };
 
+  const flash = (action: Action) => {
+    setDone(action);
+    window.setTimeout(() => setDone(null), 1800);
+  };
+
   const share = async () => {
-    const canvas = render();
-    if (!canvas) return;
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-    if (!blob) return;
-    const file = new File([blob], "fixo-share-card.png", { type: "image/png" });
-    if (navigator.share && navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: t.shareCardTitle });
-    } else download();
+    const canvas = activeCanvas();
+    if (!canvas || busy) return;
+    setBusy("share");
+    try {
+      const blob = await canvasToBlob(canvas);
+      if (!blob) throw new Error("blob");
+      const file = new File([blob], "fixo-story.png", { type: "image/png" });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: t.shareToInstagram });
+        return;
+      }
+      downloadCanvas(canvas);
+      Toast.show({ content: t.storyInstagramUnavailable, position: "bottom" });
+      flash("save");
+    } catch (error) {
+      if (isAbort(error)) return;
+      Toast.show({ content: t.shareFailed, position: "bottom" });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const save = async () => {
+    const canvas = activeCanvas();
+    if (!canvas || busy) return;
+    setBusy("save");
+    try {
+      downloadCanvas(canvas);
+      Toast.show({ content: t.storySaved, position: "bottom" });
+      flash("save");
+    } catch {
+      Toast.show({ content: t.shareFailed, position: "bottom" });
+    } finally {
+      setBusy(null);
+    }
   };
 
   const copyLink = async () => {
-    await navigator.clipboard?.writeText(window.location.href);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    if (busy) return;
+    setBusy("copy");
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      Toast.show({ content: t.copied, position: "bottom" });
+      flash("copy");
+    } catch {
+      Toast.show({ content: t.shareFailed, position: "bottom" });
+    } finally {
+      setBusy(null);
+    }
   };
 
+  const saveLabel = done === "save" ? t.storySaved : t.storySave;
+  const copyLabel = done === "copy" ? t.copied : t.copy;
+
   return (
-    <div className="story-wrap">
-      <canvas ref={canvasRef} className="story-canvas" aria-label={t.storyAria} />
-      <div className="story-preview" aria-hidden="true">
-        <p>{t.storyKicker}</p><strong>47</strong><h3>{t.storyHeadline}</h3><small>{t.storyConfirmed}</small>
-        <div className="story-award">
-          <BrandWordmark alt="" height={32} />
-          <small>{t.storyUrl}</small>
+    <div className="story-page">
+      <div className="story-switch" role="tablist" aria-label={t.storySwitchAria}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={kind === "fix"}
+          className={kind === "fix" ? "is-active" : undefined}
+          onClick={() => switchKind("fix")}
+        >
+          {t.storyThisFix}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={kind === "ward"}
+          className={kind === "ward" ? "is-active" : undefined}
+          onClick={() => switchKind("ward")}
+        >
+          {t.storyWardImpact}
+        </button>
+      </div>
+
+      <div className="story-stage">
+        <div className={`story-deck is-${slide}${ready ? " is-ready" : ""}`}>
+          <canvas
+            ref={fixCanvasRef}
+            className={kind === "fix" ? "is-active" : undefined}
+            width={1080}
+            height={1920}
+            aria-hidden={kind !== "fix"}
+            aria-label={t.storyAria}
+          />
+          <canvas
+            ref={wardCanvasRef}
+            className={kind === "ward" ? "is-active" : undefined}
+            width={1080}
+            height={1920}
+            aria-hidden={kind !== "ward"}
+            aria-label={t.storyAriaWard}
+          />
         </div>
       </div>
-      <div className="share-actions">
-        <button className="primary-button" onClick={share}><Share2 size={18} />{t.share}</button>
-        <button className="icon-action" onClick={download} aria-label={t.download}><Download size={19} /></button>
-        <button className="icon-action" onClick={copyLink} aria-label={t.copy}>{copied ? <Check size={19} /> : <Copy size={19} />}</button>
+
+      <p className="story-privacy">
+        <Lock size={14} aria-hidden />
+        {t.storyPrivacyNote}
+      </p>
+
+      <div className="story-actions">
+        <button
+          type="button"
+          className="primary-button"
+          onClick={() => void share()}
+          disabled={!ready || busy !== null}
+          data-tooltip={t.shareToInstagram}
+          aria-label={t.shareToInstagram}
+        >
+          {busy === "share" ? <Loader2 size={18} className="story-spin" aria-hidden /> : <Instagram size={18} aria-hidden />}
+          {busy === "share" ? t.storySharing : t.shareToInstagram}
+        </button>
+        <div className="story-secondary-row">
+          <button
+            type="button"
+            className="story-secondary"
+            onClick={() => void save()}
+            disabled={!ready || busy !== null}
+            data-tooltip={t.storySave}
+          >
+            {busy === "save" ? <Loader2 size={18} className="story-spin" aria-hidden /> : done === "save" ? <Check size={18} aria-hidden /> : <Save size={18} aria-hidden />}
+            {busy === "save" ? t.storySaving : saveLabel}
+          </button>
+          <button
+            type="button"
+            className="story-secondary"
+            onClick={() => void copyLink()}
+            disabled={!ready || busy !== null}
+            data-tooltip={t.copy}
+          >
+            {busy === "copy" ? <Loader2 size={18} className="story-spin" aria-hidden /> : done === "copy" ? <Check size={18} aria-hidden /> : <Copy size={18} aria-hidden />}
+            {busy === "copy" ? t.storyCopying : copyLabel}
+          </button>
+        </div>
       </div>
-      {copied && <p className="toast" role="status">{t.copied}</p>}
     </div>
   );
 }

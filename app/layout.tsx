@@ -2,9 +2,10 @@ import type { Metadata, Viewport } from "next";
 import "leaflet/dist/leaflet.css";
 import "./globals.css";
 import { assetPath } from "@/lib/assets";
+import { BasemapFilter } from "@/components/basemap-filter";
 
 const title = "Fixo";
-const description = "Report it. Track it. Confirm the fix. Report local problems to the right authority, follow every update, and verify the work before an issue is closed.";
+const description = "Report local issues. See them through. Fixo puts neighbourhood issues on the map and keeps them visible from report to resolution. Track who’s responsible, escalate stalled reports on social media, reopen incomplete work, and confirm a fix only when it’s actually done.";
 const siteUrl = process.env.GITHUB_PAGES === "true"
   ? "https://meetdesaidesign.github.io/BWMI"
   : "http://localhost:3000";
@@ -60,7 +61,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <BasemapFilter />
+        {children}
+      </body>
     </html>
   );
 }

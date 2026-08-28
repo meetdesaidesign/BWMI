@@ -10,16 +10,22 @@
     "min": "44px"
   },
   "nav": {
-    "height": "72px",
-    "heightLandscape": "60px",
-    "inset": "{space.3}",
-    "insetX": "{space.4}",
-    "gap": "{space.3}",
-    "shadow": "{shadow.1}",
-    "reportWidth": "80px",
-    "reportHeight": "{button.height}",
-    "reportWidthLandscape": "72px",
-    "reportHeightLandscape": "{touch.min}"
+    "height": "56px",
+    "heightLandscape": "48px",
+    "inset": "{space.0}",
+    "insetX": "{space.0}",
+    "gap": "{space.2}",
+    "shadow": "{shadow.0}",
+    "reportWidth": "44px",
+    "reportHeight": "44px",
+    "reportWidthLandscape": "40px",
+    "reportHeightLandscape": "40px",
+    "iconWell": "28px",
+    "notchRadius": "0px",
+    "notchLift": "0px",
+    "notchFillet": "0px",
+    "notchShoulder": "28px",
+    "notchFilletWidth": "0px"
   },
   "demo": {
     "frameWidth": "430px",

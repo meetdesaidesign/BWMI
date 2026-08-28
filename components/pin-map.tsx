@@ -2,7 +2,7 @@
 
 import { MapContainer, useMapEvents } from "react-leaflet";
 import { useState } from "react";
-import { CartoBasemap } from "./carto-basemap";
+import { Basemap } from "./basemap";
 import { WARD_CENTER } from "@/lib/geo";
 
 function CenterWatcher({ onMove }: { onMove: (center: [number, number]) => void }) {
@@ -34,7 +34,7 @@ export function PinMap({
   return (
     <div className="pin-map-frame">
       <MapContainer center={start} zoom={17} maxZoom={20} zoomControl={false} attributionControl={false} className="pin-map">
-        <CartoBasemap />
+        <Basemap />
         <CenterWatcher onMove={onChange} />
       </MapContainer>
       <span className="pin-map-pin" role="img" aria-label={label} />
