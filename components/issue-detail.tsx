@@ -380,9 +380,6 @@ export function IssueDetail({
                     {confirming ? <span className="spinner" aria-hidden /> : null}
                     {confirming ? t.confirming : t.seeToo}
                   </button>
-                  <button type="button" className="issue-confirm-secondary" onClick={() => void shareReport()}>
-                    {t.share}
-                  </button>
                 </div>
                 {confirmError ? (
                   <p className="issue-confirm-error" role="alert">
