@@ -54,6 +54,13 @@ export interface MapViewport {
   center: [number, number];
 }
 
+export interface ViewportChangeMeta {
+  /** False for recentres, marker zooms, and the initial fit. */
+  userDriven: boolean;
+  /** False from the first pixel of a pan or pinch; true when the map has stopped. */
+  settled: boolean;
+}
+
 export function inMapBounds(lat: number, lng: number, bounds: MapBounds, pad = 0.08) {
   const latPad = (bounds.north - bounds.south) * pad;
   const lngPad = (bounds.east - bounds.west) * pad;

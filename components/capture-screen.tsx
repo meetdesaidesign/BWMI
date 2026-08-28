@@ -25,6 +25,7 @@ export function CaptureScreen({
   analysisSlow,
   analysisFailed,
   analysisComplete,
+  analysisExiting,
   photoCardRef,
   onBack,
   onFile,
@@ -48,6 +49,7 @@ export function CaptureScreen({
   analysisSlow: boolean;
   analysisFailed: boolean;
   analysisComplete: boolean;
+  analysisExiting: boolean;
   photoCardRef: React.Ref<HTMLDivElement>;
   onBack: () => void;
   onFile: (file?: File) => void;
@@ -120,14 +122,17 @@ export function CaptureScreen({
               slow={analysisSlow}
               failed={analysisFailed}
               complete={analysisComplete}
+              exiting={analysisExiting}
               onFillManually={onFillManually}
               onEnterDetails={onEnterDetails}
               onChangePhoto={openPhotoOptions}
             />
           )}
-          <button type="button" className="photo-change" onClick={openPhotoOptions}>
-            <RotateCcw size={15} />{t.changePhoto}
-          </button>
+          {!analysisFailed && (
+            <button type="button" className="photo-change" onClick={openPhotoOptions}>
+              <RotateCcw size={15} />{t.changePhoto}
+            </button>
+          )}
         </div>
       ) : (
         <button type="button" className="photo-card" onClick={openCamera} aria-label={t.camera}>
@@ -160,7 +165,7 @@ export function CaptureScreen({
 
       <div className="sticky-action">
         <Button block color="primary" size="large" className="primary-button" disabled={!canContinue} onClick={onContinue}>
-          {t.reviewReport}
+          {t.review}
         </Button>
       </div>
 

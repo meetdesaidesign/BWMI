@@ -1,6 +1,6 @@
 # Navigation
 
-**Purpose:** Two persistent destinations — Nearby and My Reports — flank Report, a compact icon-only circle, on a flat bottom bar.
+**Purpose:** Two persistent destinations — Nearby and My Reports — flank Report, an icon-only circle, on a flat bottom bar.
 
 **Anatomy:** full-width bar · Nearby · Report circle · My Reports
 
@@ -8,9 +8,9 @@
 
 **States:** default, pressed, focus-visible. Destinations also have an active state. Report does not.
 
-**Tokens:** `nav.height`, `nav.heightLandscape`, `nav.reportWidth`, `nav.reportHeight`, `touch.min`, `action.primary`, `border.subtle`, `font-weight.medium`, `font-weight.semibold`
+**Tokens:** `nav.height`, `nav.heightLandscape`, `nav.safeInset`, `nav.safeInsetLandscape`, `nav.touchMin`, `nav.itemGap`, `nav.reportWidth`, `nav.reportHeight`, `nav.reportShadow`, `nav.iconSize`, `text.secondary`, `action.primary`, `border.subtle`, `font-weight.medium`, `font-weight.semibold`
 
-**Sizing:** Bar is 56px tall (48px landscape) plus `safe-area-inset-bottom`. Report circle 44×44 px (40×40 in landscape), optically centred on the bar’s top edge. Destination icons 20×20 px. All controls ≥44×44 px.
+**Sizing:** Bar content is 64px tall (56px landscape). Bottom padding is `max(nav.safeInset 20px, safe-area-inset-bottom)` — 16px in landscape — so the bar reads 80–88px on a typical phone. Report circle 56×56 px (48×48 in landscape), optically centred on the bar’s top edge, with `nav.reportShadow`. Destination icons 24×24 px, 4px from the 12px medium label. Inactive destinations use `text.secondary`. All controls ≥48×48 px.
 
 **Responsive:** Stays a bottom bar in the phone frame. Do not convert to a sidebar in this product. Destination labels stay on one line. Report is icon-only.
 

@@ -80,7 +80,7 @@
     "full": "9999px"
   },
   "fontFamily": {
-    "sans": "\"Manrope\", \"Noto Sans Devanagari\", \"Noto Sans Kannada\", system-ui, sans-serif"
+    "sans": "\"Satoshi\", \"Noto Sans Devanagari\", \"Noto Sans Kannada\", system-ui, sans-serif"
   },
   "fontSize": {
     "12": "12px",

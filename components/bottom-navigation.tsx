@@ -5,7 +5,7 @@ import type { getCopy } from "@/lib/i18n";
 
 export type BottomNavDestination = "around" | "reports";
 
-const iconProps = { size: 20, strokeWidth: 1.75, "aria-hidden": true as const };
+const iconProps = { size: 24, strokeWidth: 1.75, "aria-hidden": true as const };
 
 /**
  * Two destinations on a flat bar, with Report as a circular action in the
@@ -70,9 +70,9 @@ export function BottomNavigation({
       >
         <span className="bottom-nav-report-badge">
           {busy ? (
-            <LoaderCircle className="bottom-nav-spinner" size={20} strokeWidth={2.4} aria-hidden />
+            <LoaderCircle className="bottom-nav-spinner" size={24} strokeWidth={2.4} aria-hidden />
           ) : (
-            <Plus size={20} strokeWidth={2.4} aria-hidden />
+            <Plus size={24} strokeWidth={2.4} aria-hidden />
           )}
         </span>
       </button>

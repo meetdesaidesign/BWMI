@@ -12,10 +12,10 @@ import {
   ImageOff,
   MapPin,
   MoreVertical,
+  RotateCcw,
   Share2,
-  X,
 } from "lucide-react";
-import { Button, Toast } from "antd-mobile";
+import { Toast } from "antd-mobile";
 import { useEffect, useId, useRef, useState } from "react";
 import { areaContext, officerDisplayName, resolveIssueAuthority } from "@/lib/authority";
 import { distanceMeters, formatDistance } from "@/lib/geo";
@@ -30,7 +30,7 @@ import {
 import { composeIssuePost, isResponseOverdue } from "@/lib/share";
 import type { Authority, Issue, IssueStatus, Locale, StatusEvent } from "@/lib/types";
 import { OverlaySheet } from "./overlay-sheet";
-import { ShareSheet } from "./share-sheet";
+import { ShareSheet, XLogo } from "./share-sheet";
 
 const statusTone: Record<Issue["status"], string> = {
   reported: "slate",
@@ -163,6 +163,7 @@ export function IssueDetail({
   const [menuOpen, setMenuOpen] = useState(false);
   const [authorityOpen, setAuthorityOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [shareKind, setShareKind] = useState<"share" | "escalate">("share");
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -233,13 +234,35 @@ export function IssueDetail({
   };
 
   const overdue = isResponseOverdue(issue);
-  const publicPost = composeIssuePost(issue, locale, t.postTemplate, t.postHashtags);
+  const confirmedOther = backed && !issue.mine;
+  const postTemplate = confirmedOther ? t.postTemplateConfirmed : t.postTemplate;
+  const publicPost = composeIssuePost(issue, locale, postTemplate, t.postHashtags);
   const neighbours = backed
     ? countCopy(issue.supporters, t.neighboursConfirmedNowOne, t.neighboursConfirmedNow)
     : countCopy(issue.supporters, t.neighboursConfirmedOne, t.neighboursConfirmed);
   const updates = countCopy(issue.timeline.length, t.updatesCountOne, t.updatesCount);
-  const stickyPrimary = issue.mine ? t.youReportedThis : backed ? t.statusConfirmed : confirming ? t.confirming : t.seeToo;
-  const stickyDisabled = issue.mine || backed || confirming;
+  const stickyPrimary = issue.mine
+    ? t.youReportedThis
+    : confirmedOther
+      ? t.shareOnX
+      : confirming
+        ? t.confirming
+        : t.seeToo;
+  const stickyDisabled = issue.mine || confirming;
+
+  const openShareSheet = (kind: "share" | "escalate") => {
+    setShareKind(kind);
+    setShareOpen(true);
+  };
+
+  const onStickyPrimary = () => {
+    if (issue.mine || confirming) return;
+    if (confirmedOther) {
+      openShareSheet("share");
+      return;
+    }
+    void confirmSeen();
+  };
 
   return (
     <div className="full-page issue-detail">
@@ -266,13 +289,18 @@ export function IssueDetail({
               <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); void shareReport(); }}>
                 <Share2 size={18} aria-hidden />{t.shareReport}
               </button>
+              {confirmedOther ? (
+                <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); openShareSheet("share"); }}>
+                  <XLogo size={16} />{t.shareOnX}
+                </button>
+              ) : null}
               <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); Toast.show({ content: t.reportIncorrectThanks, position: "bottom" }); }}>
                 <Flag size={18} aria-hidden />{t.reportIncorrect}
               </button>
               <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); void copyLink(); }}>
                 <Copy size={18} aria-hidden />{t.copyReportLink}
               </button>
-              {backed && !issue.mine ? (
+              {confirmedOther ? (
                 <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onUndoConfirm(); }}>
                   {t.undoConfirm}
                 </button>
@@ -312,6 +340,10 @@ export function IssueDetail({
             </div>
           </section>
 
+          {issue.status === "awaiting_confirmation" && (
+            <ConfirmFixCard issue={issue} t={t} onConfirm={onConfirm} onContest={onContest} />
+          )}
+
           <section className={`issue-card issue-confirm${backed ? " is-done" : ""}`} aria-live="polite">
             {issue.mine ? (
               <>
@@ -325,6 +357,12 @@ export function IssueDetail({
                   {t.youConfirmedIssue}
                 </h2>
                 <p className="issue-card-body">{neighbours}</p>
+                <div className="issue-confirm-actions">
+                  <button type="button" className="issue-confirm-primary" onClick={() => openShareSheet("share")}>
+                    <XLogo size={15} />
+                    {t.shareOnX}
+                  </button>
+                </div>
                 <button type="button" className="issue-text-link" onClick={onUndoConfirm}>{t.undoConfirm}</button>
               </>
             ) : (
@@ -415,38 +453,24 @@ export function IssueDetail({
             <section className="issue-card issue-escalate">
               <h2 className="issue-card-title">{t.escalatePublicly}</h2>
               <p className="issue-card-body">{t.escalateHelp}</p>
-              <button type="button" className="issue-text-link" onClick={() => setShareOpen(true)}>
+              <button type="button" className="issue-text-link" onClick={() => openShareSheet("escalate")}>
                 {t.escalatePublicly}
               </button>
             </section>
           )}
 
-          {issue.status === "awaiting_confirmation" && (
-            <section className="issue-card issue-verify">
-              <h2 className="issue-card-title">{t.awaiting}</h2>
-              <p className="issue-card-body">{t.inspect}</p>
-              <div className="issue-verify-actions">
-                <Button block color="success" size="large" className="primary-button green" onClick={onConfirm}>
-                  <Check size={18} aria-hidden />{t.fixed}
-                </Button>
-                <Button block fill="outline" size="large" className="secondary-button danger" onClick={onContest}>
-                  <X size={18} aria-hidden />{t.broken}
-                </Button>
-              </div>
-            </section>
-          )}
         </article>
       </div>
 
       <div className="issue-detail-bar">
         <button
           type="button"
-          className={`issue-bar-primary${backed && !issue.mine ? " is-confirmed" : ""}`}
-          onClick={() => void confirmSeen()}
+          className="issue-bar-primary"
+          onClick={onStickyPrimary}
           disabled={stickyDisabled}
           aria-busy={confirming && !issue.mine && !backed}
         >
-          {backed && !issue.mine ? <Check size={18} aria-hidden /> : confirming ? <span className="spinner" aria-hidden /> : null}
+          {confirmedOther ? <XLogo size={15} /> : confirming ? <span className="spinner" aria-hidden /> : null}
           {stickyPrimary}
         </button>
         <button type="button" className="issue-icon-btn issue-bar-share" onClick={() => void shareReport()} aria-label={t.share}>
@@ -457,7 +481,7 @@ export function IssueDetail({
       <AuthoritySheet open={authorityOpen} authority={authority} officer={officer} locale={locale} t={t} onClose={() => setAuthorityOpen(false)} />
       <ShareSheet
         open={shareOpen}
-        title={t.escalatePublicly}
+        title={shareKind === "escalate" ? t.escalatePublicly : t.shareOnX}
         post={publicPost}
         t={t}
         onClose={() => setShareOpen(false)}
@@ -520,6 +544,51 @@ function IssuePhoto({ src, alt, t }: { src: string; alt: string; t: ReturnType<t
         />
       )}
     </div>
+  );
+}
+
+function ConfirmFixCard({
+  issue,
+  t,
+  onConfirm,
+  onContest,
+}: {
+  issue: Issue;
+  t: ReturnType<typeof getCopy>;
+  onConfirm: () => void;
+  onContest: () => void;
+}) {
+  const resolutionEvent = eventByStatus(issue.timeline, "awaiting_confirmation");
+
+  return (
+    <section className="issue-card issue-verify" aria-labelledby={`confirm-fix-${issue.id}`}>
+      <div className="issue-verify-copy">
+        <h2 id={`confirm-fix-${issue.id}`} className="issue-card-title">{t.awaiting}</h2>
+        <p className="issue-card-body">{t.inspect}</p>
+      </div>
+
+      {issue.resolutionImage ? (
+        <figure className="issue-after-fix">
+          <img src={issue.resolutionImage} alt={t.afterFixPhotoAlt} />
+          <figcaption>
+            <strong>{t.afterFix}</strong>
+            {resolutionEvent?.date ? <time>{resolutionEvent.date}</time> : null}
+          </figcaption>
+        </figure>
+      ) : null}
+
+      <div className="issue-verify-actions">
+        <button type="button" className="issue-verify-confirm" onClick={onConfirm}>
+          <Check size={19} strokeWidth={2.5} aria-hidden />
+          {t.fixed}
+        </button>
+        <button type="button" className="issue-verify-reopen" onClick={onContest}>
+          <RotateCcw size={17} strokeWidth={2.25} aria-hidden />
+          {t.broken}
+        </button>
+        <p className="issue-verify-help">{t.reopenNext}</p>
+      </div>
+    </section>
   );
 }
 

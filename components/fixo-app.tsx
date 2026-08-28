@@ -37,12 +37,26 @@ type Screen = "nearby" | "mine" | "issue" | "capture" | "review" | "success" | "
 type HomeScreen = "nearby" | "mine";
 type HandoffPhase = "idle" | "analyzing" | "flight";
 type PhotoBox = { top: number; left: number; width: number; height: number; radius: string };
-type PhotoFlight = { src: string; from: PhotoBox; to: PhotoBox; moving: boolean };
+type PhotoFlight = {
+  src: string;
+  from: PhotoBox;
+  tx: number;
+  ty: number;
+  clipFrom: string;
+  clipTo: string;
+  moving: boolean;
+};
 
 const reportFlow: Screen[] = ["capture", "review"];
 const ANALYSIS_MIN_MS = 600;
 const ANALYSIS_SLOW_MS = 4000;
+const ANALYSIS_SETTLE_MS = 180;
+const OVERLAY_FADE_MS = 120;
 const PHOTO_FLIGHT_MS = 400;
+
+function clipInset(top: number, right: number, bottom: number, left: number, radius: string) {
+  return `inset(${top}px ${right}px ${bottom}px ${left}px round ${radius || "16px"})`;
+}
 
 function relativeBox(el: HTMLElement, root: HTMLElement): PhotoBox {
   const a = el.getBoundingClientRect();
@@ -135,6 +149,7 @@ export function FixoApp() {
   const [handoff, setHandoff] = useState<HandoffPhase>("idle");
   const [handoffSlow, setHandoffSlow] = useState(false);
   const [handoffFailed, setHandoffFailed] = useState(false);
+  const [handoffExiting, setHandoffExiting] = useState(false);
   const [flight, setFlight] = useState<PhotoFlight | null>(null);
   const [playFill, setPlayFill] = useState(false);
   const [fillMode, setFillMode] = useState<"stagger" | "instant">("stagger");
@@ -208,31 +223,51 @@ export function FixoApp() {
     if (handoff !== "analyzing" || handoffFailed) return;
     const gen = handoffGen.current;
     if (analysis !== "done" && analysis !== "failed") return;
+    const timers: number[] = [];
     const wait = Math.max(0, ANALYSIS_MIN_MS - (Date.now() - handoffStarted.current));
-    const timer = window.setTimeout(() => {
+    timers.push(window.setTimeout(() => {
       if (handoffGen.current !== gen) return;
       if (analysis === "failed" || !extractionUsable(extraction)) {
         setHandoffFailed(true);
         return;
       }
-      const fromEl = photoFromRef.current;
-      const root = appRootRef.current;
-      if (!photo || !fromEl || !root || prefersReducedMotion()) {
-        setFillMode("stagger");
-        setPlayFill(true);
-        setHandoff("idle");
-        setScreen("review");
-        return;
-      }
-      const from = relativeBox(fromEl, root);
-      flightDone.current = false;
-      setFillMode("stagger");
-      setPlayFill(false);
-      setFlight({ src: photo, from, to: from, moving: false });
-      setHandoff("flight");
-      setScreen("review");
-    }, wait);
-    return () => window.clearTimeout(timer);
+      timers.push(window.setTimeout(() => {
+        if (handoffGen.current !== gen) return;
+        const fromEl = photoFromRef.current;
+        const root = appRootRef.current;
+        const reduced = prefersReducedMotion();
+        if (!photo || !fromEl || !root || reduced) {
+          setFillMode(reduced ? "instant" : "stagger");
+          setPlayFill(!reduced);
+          setHandoffExiting(false);
+          setHandoff("idle");
+          setScreen("review");
+          return;
+        }
+        const from = relativeBox(fromEl, root);
+        const clipFrom = clipInset(0, 0, 0, 0, from.radius);
+        setHandoffExiting(true);
+        timers.push(window.setTimeout(() => {
+          if (handoffGen.current !== gen) return;
+          flightDone.current = false;
+          setFillMode("stagger");
+          setPlayFill(false);
+          setFlight({
+            src: photo,
+            from,
+            tx: 0,
+            ty: 0,
+            clipFrom,
+            clipTo: clipFrom,
+            moving: false,
+          });
+          setHandoffExiting(false);
+          setHandoff("flight");
+          setScreen("review");
+        }, OVERLAY_FADE_MS));
+      }, ANALYSIS_SETTLE_MS));
+    }, wait));
+    return () => timers.forEach((id) => window.clearTimeout(id));
   }, [handoff, handoffFailed, analysis, extraction, photo]);
 
   useEffect(() => {
@@ -247,8 +282,14 @@ export function FixoApp() {
     const root = appRootRef.current;
     if (!toEl || !root) return;
     const to = relativeBox(toEl, root);
+    const from = flight.from;
+    const clipX = Math.max(0, (from.width - to.width) / 2);
+    const clipY = Math.max(0, (from.height - to.height) / 2);
+    const tx = to.left - from.left - clipX;
+    const ty = to.top - from.top - clipY;
+    const clipTo = clipInset(clipY, clipX, clipY, clipX, to.radius);
     const frame = window.requestAnimationFrame(() => {
-      setFlight((current) => (current ? { ...current, to, moving: true } : current));
+      setFlight((current) => (current ? { ...current, tx, ty, clipTo, moving: true } : current));
     });
     return () => window.cancelAnimationFrame(frame);
   }, [handoff, flight]);
@@ -277,6 +318,7 @@ export function FixoApp() {
     setHandoff("idle");
     setHandoffSlow(false);
     setHandoffFailed(false);
+    setHandoffExiting(false);
     setFlight(null);
   };
 
@@ -287,6 +329,7 @@ export function FixoApp() {
     handoffStarted.current = Date.now();
     setHandoffSlow(false);
     setHandoffFailed(false);
+    setHandoffExiting(false);
     setPlayFill(false);
     setFillMode("stagger");
     setHandoff("analyzing");
@@ -299,6 +342,7 @@ export function FixoApp() {
     setFlight(null);
     setHandoffSlow(false);
     setHandoffFailed(false);
+    setHandoffExiting(false);
     navigate("review");
   };
 
@@ -676,6 +720,7 @@ export function FixoApp() {
               analysisSlow={handoffSlow}
               analysisFailed={handoffFailed}
               analysisComplete={analysis === "done" && extractionUsable(extraction)}
+              analysisExiting={handoffExiting}
               photoCardRef={photoFromRef}
               onBack={handoff === "analyzing" ? cancelHandoff : closeReport}
               onFile={(file) => readFile(file)}
@@ -765,14 +810,15 @@ export function FixoApp() {
         <div
           className={`photo-handoff${flight.moving ? " is-moving" : ""}`}
           style={{
-            top: (flight.moving ? flight.to : flight.from).top,
-            left: (flight.moving ? flight.to : flight.from).left,
-            width: (flight.moving ? flight.to : flight.from).width,
-            height: (flight.moving ? flight.to : flight.from).height,
-            borderRadius: (flight.moving ? flight.to : flight.from).radius,
+            top: flight.from.top,
+            left: flight.from.left,
+            width: flight.from.width,
+            height: flight.from.height,
+            transform: `translate3d(${flight.moving ? flight.tx : 0}px, ${flight.moving ? flight.ty : 0}px, 0)`,
+            clipPath: flight.moving ? flight.clipTo : flight.clipFrom,
           }}
           onTransitionEnd={(event) => {
-            if (event.propertyName !== "top" && event.propertyName !== "width") return;
+            if (event.propertyName !== "transform") return;
             finishFlight();
           }}
         >

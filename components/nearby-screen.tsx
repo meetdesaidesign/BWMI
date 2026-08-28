@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, LocateFixed, Search, X } from "lucide-react";
+import { ChevronDown, LocateFixed, Search } from "lucide-react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { LocationSheet } from "./location-sheet";
 import { FilterBar, type FilterPanel } from "./filter-bar";
@@ -11,13 +11,18 @@ import { ProfileAvatar } from "./profile-avatar";
 import { areaContext } from "@/lib/authority";
 import { track } from "@/lib/analytics";
 import { applyFilters, defaultFilters, previewCount, readStoredFilters, writeStoredFilters } from "@/lib/filters";
-import { WARD_CENTER, boundsMovedAway, locateInWard, type MapBounds, type MapViewport } from "@/lib/geo";
+import { WARD_CENTER, boundsMovedAway, type MapBounds, type MapViewport, type ViewportChangeMeta } from "@/lib/geo";
 import { formatCopy, getPublicStatusLabel, type getCopy } from "@/lib/i18n";
+import { areaContextFor, DEFAULT_LOCALITY_ID, reverseGeocode } from "@/lib/localities";
 import { publicStatusOf } from "@/lib/public-status";
-import type { FilterState, Issue, Locale } from "@/lib/types";
+import type { AreaContext, FilterState, Issue, Locale } from "@/lib/types";
 
 /** Height the map assumes for the deck before it has been measured once. */
-const DECK_PEEK_ESTIMATE = 268;
+const DECK_PEEK_ESTIMATE = 340;
+/** Wait until the map has actually stopped before renaming the place. */
+const PLACE_IDLE_MS = 650;
+/** Keep the outgoing name on screen long enough to read as a refresh, not a jump. */
+const PLACE_REFRESH_MS = 180;
 
 function titleOf(issue: Issue, locale: Locale) {
   return locale === "hi" ? issue.titleHi : locale === "kn" ? issue.titleKn : issue.titleEn;
@@ -57,9 +62,15 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
   // the session or hides issues on the next visit.
   const [searchArea, setSearchArea] = useState<MapBounds | null>(null);
   const [areaStale, setAreaStale] = useState(false);
+  const [viewArea, setViewArea] = useState<AreaContext>(areaContext);
+  const [placeRefreshing, setPlaceRefreshing] = useState(false);
   // The view the current results describe. Only a pan away from it earns the button.
   const resultBounds = useRef<MapBounds | null>(null);
   const viewportRef = useRef<MapViewport | null>(null);
+  const localityIdRef = useRef(DEFAULT_LOCALITY_ID);
+  const placeTimer = useRef<number>(0);
+  const refreshTimer = useRef<number>(0);
+  const placeGen = useRef(0);
   // Snapshot of the ids the deck opened with. The map recentres on every swipe,
   // which reorders the distance-sorted results — the deck must not reshuffle
   // under the thumb that is swiping it.
@@ -85,21 +96,62 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
     resultBounds.current = viewportRef.current?.bounds ?? null;
   }, []);
 
-  const handleViewport = useCallback((next: MapViewport, meta: { userDriven: boolean }) => {
-    setViewport(next);
+  const applyPlace = useCallback((lat: number, lng: number) => {
+    const next = reverseGeocode(lat, lng, localityIdRef.current);
+    window.clearTimeout(refreshTimer.current);
+    if (next.id === localityIdRef.current) {
+      setPlaceRefreshing(false);
+      return;
+    }
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      localityIdRef.current = next.id;
+      setViewArea(areaContextFor(next));
+      setPlaceRefreshing(false);
+      return;
+    }
+    const gen = ++placeGen.current;
+    setPlaceRefreshing(true);
+    refreshTimer.current = window.setTimeout(() => {
+      if (gen !== placeGen.current) return;
+      localityIdRef.current = next.id;
+      setViewArea(areaContextFor(next));
+      setPlaceRefreshing(false);
+    }, PLACE_REFRESH_MS);
+  }, []);
+
+  const handleViewport = useCallback((next: MapViewport, meta: ViewportChangeMeta) => {
     viewportRef.current = next;
+    if (!meta.settled) {
+      placeGen.current += 1;
+      window.clearTimeout(placeTimer.current);
+      window.clearTimeout(refreshTimer.current);
+      setPlaceRefreshing(false);
+      return;
+    }
+
+    setViewport(next);
     if (!meta.userDriven) {
       // Recentres and marker zooms are ours: the results follow the map, so the
       // view they describe moves with it and nothing has gone stale.
       resultBounds.current = next.bounds;
+      applyPlace(next.center[0], next.center[1]);
       return;
     }
+
     const anchor = resultBounds.current;
-    if (!anchor) {
-      resultBounds.current = next.bounds;
-      return;
-    }
-    if (boundsMovedAway(anchor, next.bounds)) setAreaStale(true);
+    if (!anchor) resultBounds.current = next.bounds;
+    else if (boundsMovedAway(anchor, next.bounds)) setAreaStale(true);
+
+    window.clearTimeout(placeTimer.current);
+    placeTimer.current = window.setTimeout(() => {
+      applyPlace(next.center[0], next.center[1]);
+    }, PLACE_IDLE_MS);
+  }, [applyPlace]);
+
+  useEffect(() => () => {
+    window.clearTimeout(placeTimer.current);
+    window.clearTimeout(refreshTimer.current);
   }, []);
 
   const searchThisArea = useCallback(() => {
@@ -127,7 +179,7 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
     }
     setLocationStatus("prompting");
     navigator.geolocation.getCurrentPosition(
-      (pos) => finish(locateInWard(pos.coords.latitude, pos.coords.longitude)),
+      (pos) => finish([pos.coords.latitude, pos.coords.longitude]),
       (error) => {
         const denied = error.code === error.PERMISSION_DENIED;
         setLocationStatus(denied ? "denied" : "error");
@@ -184,7 +236,7 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
   const deckOpen = highlighted != null && deckIssues.some((issue) => issue.id === highlighted.id);
   const dockPeek = deckOpen ? deckPeek : 0;
   // Authority stays secondary to the location, and drops out entirely when unknown.
-  const authorityLine = areaContext.corporation[locale] || areaContext.authority.organizationName[locale] || "";
+  const authorityLine = viewArea.corporation[locale] || viewArea.authority.organizationName[locale] || "";
   const localeTag = locale === "en" ? "en-IN" : locale === "hi" ? "hi-IN" : "kn-IN";
 
   // Filters (or a fresh sync) can retire a card mid-deck. Drop it, keep the order.
@@ -242,6 +294,9 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
 
   return (
     <div className="nearby-stage" style={{ ["--sheet-peek" as string]: `${dockPeek}px` }}>
+      {placeRefreshing ? (
+        <span className="visually-hidden" role="status">{t.updatingArea}</span>
+      ) : null}
       <MapLoader
         issues={mapIssues}
         selected={highlighted ?? undefined}
@@ -261,13 +316,14 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
         <header className="top-surface">
           <button
             type="button"
-            className="top-surface-place"
+            className={`top-surface-place${placeRefreshing ? " is-refreshing" : ""}`}
             onClick={() => setLocationOpen(true)}
             aria-haspopup="dialog"
-            aria-label={`${areaContext.areaName[locale]}${authorityLine ? `, ${authorityLine}` : ""}. ${t.areaDetails}`}
+            aria-busy={placeRefreshing || undefined}
+            aria-label={`${viewArea.areaName[locale]}${authorityLine ? `, ${authorityLine}` : ""}. ${t.areaDetails}`}
           >
             <span className="top-surface-text">
-              <span className="top-surface-name">{areaContext.areaName[locale]}</span>
+              <span className="top-surface-name">{viewArea.areaName[locale]}</span>
               {authorityLine ? <small>{authorityLine}</small> : null}
             </span>
             <ChevronDown size={16} aria-hidden />
@@ -286,11 +342,6 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
           <button type="button" className="map-area-action" onClick={searchThisArea}>
             <Search size={15} strokeWidth={2.25} aria-hidden />
             {t.searchThisArea}
-          </button>
-        ) : searchArea ? (
-          <button type="button" className="map-area-action is-applied" onClick={clearSearchArea} aria-label={t.clearAreaSearch}>
-            {t.searchingThisArea}
-            <X size={15} strokeWidth={2.25} aria-hidden />
           </button>
         ) : null}
       </div>
@@ -342,7 +393,7 @@ export const NearbyScreen = forwardRef<NearbyScreenHandle, {
         onClose={() => setFilterPanel(null)}
         onApply={applyFiltersAndStore}
       />
-      <LocationSheet open={locationOpen} locale={locale} t={t} area={areaContext} onClose={() => setLocationOpen(false)} />
+      <LocationSheet open={locationOpen} locale={locale} t={t} area={viewArea} onClose={() => setLocationOpen(false)} />
     </div>
   );
 });

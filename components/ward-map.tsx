@@ -4,7 +4,7 @@ import L from "leaflet";
 import { Circle, Marker, MapContainer, useMap, useMapEvents } from "react-leaflet";
 import { Basemap } from "./basemap";
 import { tokens } from "@/design-system/generated/tokens";
-import { WARD_CENTER, type MapViewport } from "@/lib/geo";
+import { WARD_CENTER, type MapViewport, type ViewportChangeMeta } from "@/lib/geo";
 import type { Issue, Locale } from "@/lib/types";
 import { categoryColor, categoryMarkerSvg } from "./category-icon";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -132,7 +132,7 @@ function MapLayers({
   getClusterLabel: (count: number) => string;
   onSelect: (issue: Issue) => void;
   onDeselect: () => void;
-  onViewportChange: (viewport: MapViewport, meta: { userDriven: boolean }) => void;
+  onViewportChange: (viewport: MapViewport, meta: ViewportChangeMeta) => void;
 }) {
   const map = useMap();
   const hereRef = useRef(here);
@@ -148,17 +148,22 @@ function MapLayers({
     click() {
       onDeselect();
     },
+    movestart() {
+      // Cancel an in-flight place lookup as soon as the map starts moving,
+      // including our own fly-tos, so a stale centre cannot land after arrival.
+      onViewportChange(viewportOf(map), { userDriven: !skipMove.current, settled: false });
+    },
     moveend() {
       // Recentres and cluster zooms are ours, not the resident's — only a pan or
       // pinch they performed themselves should offer to re-search the area.
       const programmatic = skipMove.current;
       skipMove.current = false;
-      onViewportChange(viewportOf(map), { userDriven: !programmatic });
+      onViewportChange(viewportOf(map), { userDriven: !programmatic, settled: true });
     },
   });
 
   useEffect(() => {
-    onViewportChange(viewportOf(map), { userDriven: false });
+    onViewportChange(viewportOf(map), { userDriven: false, settled: true });
   }, [map, onViewportChange]);
 
   useEffect(() => {
@@ -256,7 +261,7 @@ export function WardMap({
   selected?: Issue;
   onSelect: (issue: Issue) => void;
   onDeselect: () => void;
-  onViewportChange: (viewport: MapViewport, meta: { userDriven: boolean }) => void;
+  onViewportChange: (viewport: MapViewport, meta: ViewportChangeMeta) => void;
   here?: [number, number];
   recenterNonce?: number;
   locale?: Locale;

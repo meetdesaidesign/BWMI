@@ -13,27 +13,45 @@ import {
 } from "react";
 import { track } from "@/lib/analytics";
 import { distanceMeters, formatDistance } from "@/lib/geo";
-import { formatCopy, getCategoryLabel, type getCopy } from "@/lib/i18n";
+import {
+  countCopy,
+  formatCopy,
+  getCategoryLabel,
+  getStatusLabel,
+  type getCopy,
+} from "@/lib/i18n";
 import type { Issue, Locale } from "@/lib/types";
 import { CategoryIcon, categoryColor } from "./category-icon";
-import { ProblemFacts } from "./problem-card";
+import { ProblemFacts, statusTone } from "./problem-card";
 
 function titleOf(issue: Issue, locale: Locale) {
   return locale === "hi" ? issue.titleHi : locale === "kn" ? issue.titleKn : issue.titleEn;
+}
+
+function ageOf(issue: Issue, locale: Locale) {
+  return locale === "hi" ? issue.reportedAgoHi : locale === "kn" ? issue.reportedAgoKn : issue.reportedAgoEn;
 }
 
 function prefersReducedMotion() {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-/** Past this, the pointer is a swipe. Below it, the tap still belongs to the card. */
+function supportsScrollEnd() {
+  return typeof window !== "undefined" && "onscrollend" in window;
+}
+
+/** Desktop mouse drag: past this, the pointer is a swipe. */
 const DRAG_THRESHOLD_PX = 6;
+/** Native touch: movement beyond this is a swipe, not a tap that opens the card. */
+const TAP_THRESHOLD_PX = 8;
+const SETTLE_FALLBACK_MS = 100;
+const CARD_IMAGE_WIDTH = 340;
+const CARD_IMAGE_HEIGHT = 152;
 
 /**
  * The deck only exists once a pin is chosen, so it never competes with the map
- * on arrival. Swiping it is the same gesture as walking down the street: the
- * centred card is the pin the map is looking at, and its neighbours sit smaller
- * on either side to show there is more without pretending to be readable.
+ * on arrival. On a fine pointer the cursor carries the deck; on a phone the
+ * browser's own scroll + snap is the gesture, so the card stays under the thumb.
  */
 export function IssueCarousel({
   issues,
@@ -76,9 +94,12 @@ export function IssueCarousel({
     velocity: number;
     moved: number;
   } | null>(null);
+  const touchOrigin = useRef<{ x: number; y: number } | null>(null);
   const suppressClick = useRef(false);
 
   const index = issues.findIndex((issue) => issue.id === selectedId);
+  const indexRef = useRef(index);
+  indexRef.current = index;
   const localeTag = locale === "en" ? "en-IN" : locale === "hi" ? "hi-IN" : "kn-IN";
 
   const centerOn = useCallback((id: string, behavior: ScrollBehavior) => {
@@ -148,7 +169,7 @@ export function IssueCarousel({
     onSelect(next);
   }, [issues, onSelect]);
 
-  const settle = () => {
+  const settle = useCallback(() => {
     const root = scrollerRef.current;
     if (!root) return;
     if (programmatic.current) {
@@ -157,8 +178,61 @@ export function IssueCarousel({
     }
     if (dragRef.current) return;
     const to = nearestIndex();
-    if (to >= 0) commit(to, index);
-  };
+    if (to >= 0) commit(to, indexRef.current);
+  }, [commit, nearestIndex]);
+
+  // Native snap: wait until the scroller is actually at rest before touching
+  // React state or the map. IntersectionObserver tracks coverage without
+  // setState; scrollend (or a short idle timer) commits the centred card.
+  useEffect(() => {
+    const root = scrollerRef.current;
+    if (!root) return;
+
+    const ratios = new Map<string, number>();
+    const io = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        const id = (entry.target as HTMLElement).dataset.issueId;
+        if (!id) continue;
+        if (entry.intersectionRatio > 0) ratios.set(id, entry.intersectionRatio);
+        else ratios.delete(id);
+      }
+    }, { root, threshold: [0.25, 0.4, 0.55, 0.7, 0.85, 1] });
+    root.querySelectorAll<HTMLElement>("[data-issue-id]").forEach((card) => io.observe(card));
+
+    const commitVisible = () => {
+      if (programmatic.current || dragRef.current) {
+        settle();
+        return;
+      }
+      let bestId = "";
+      let best = -1;
+      ratios.forEach((ratio, id) => {
+        if (ratio > best) {
+          best = ratio;
+          bestId = id;
+        }
+      });
+      const observed = bestId ? issues.findIndex((issue) => issue.id === bestId) : -1;
+      const to = observed >= 0 ? observed : nearestIndex();
+      if (to >= 0) commit(to, indexRef.current);
+    };
+
+    root.addEventListener("scrollend", commitVisible);
+    const onScroll = supportsScrollEnd()
+      ? undefined
+      : () => {
+        if (dragRef.current) return;
+        window.clearTimeout(settleTimer.current);
+        settleTimer.current = window.setTimeout(commitVisible, SETTLE_FALLBACK_MS);
+      };
+    if (onScroll) root.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      io.disconnect();
+      root.removeEventListener("scrollend", commitVisible);
+      if (onScroll) root.removeEventListener("scroll", onScroll);
+    };
+  }, [commit, issues, nearestIndex, settle]);
 
   const endDrag = useCallback((timeStamp: number) => {
     const root = scrollerRef.current;
@@ -192,13 +266,18 @@ export function IssueCarousel({
   }, [centerOn, commit, issues, nearestIndex]);
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    // Touch already has momentum and snapping of its own; this is for cursors.
-    if (event.pointerType === "touch" || event.button !== 0) return;
+    suppressClick.current = false;
+    // Touch keeps native scrolling. Record the origin so a swipe cannot open
+    // the card, then leave the pointer alone — no drag, no move listeners.
+    if (event.pointerType === "touch") {
+      touchOrigin.current = { x: event.clientX, y: event.clientY };
+      return;
+    }
+    if (event.button !== 0) return;
     const root = scrollerRef.current;
     if (!root) return;
     window.clearTimeout(settleTimer.current);
     window.clearTimeout(snapTimer.current);
-    suppressClick.current = false;
     // Do not capture yet. A mouse cannot flick a scroller, but capturing on
     // mousedown steals the click from the card. Capture starts once this
     // pointer has actually moved far enough to be a swipe.
@@ -235,6 +314,16 @@ export function IssueCarousel({
     root.scrollLeft = drag.startScroll - dx;
   };
 
+  const onPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const origin = touchOrigin.current;
+    if (origin && event.pointerType === "touch") {
+      const moved = Math.hypot(event.clientX - origin.x, event.clientY - origin.y);
+      if (moved > TAP_THRESHOLD_PX) suppressClick.current = true;
+      touchOrigin.current = null;
+    }
+    endDrag(event.timeStamp);
+  };
+
   const step = (delta: number) => {
     const next = issues[index + delta];
     if (next) onSelect(next);
@@ -267,14 +356,10 @@ export function IssueCarousel({
         role="group"
         tabIndex={0}
         aria-label={`${t.nearbyIssues}. ${t.swipeCards}`}
-        onScroll={() => {
-          window.clearTimeout(settleTimer.current);
-          settleTimer.current = window.setTimeout(settle, 120);
-        }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={(event) => endDrag(event.timeStamp)}
-        onPointerCancel={(event) => endDrag(event.timeStamp)}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
         onLostPointerCapture={(event) => endDrag(event.timeStamp)}
         onDragStart={(event) => event.preventDefault()}
         onClickCapture={(event) => {
@@ -285,9 +370,11 @@ export function IssueCarousel({
         }}
         onKeyDown={onKeyDown}
       >
-        {issues.map((issue) => {
+        {issues.map((issue, position) => {
           const selected = issue.id === selectedId;
           const distance = formatDistance(distanceMeters(origin[0], origin[1], issue.lat, issue.lng), localeTag);
+          const near = Math.abs(position - Math.max(0, index)) <= 1;
+          const age = ageOf(issue, locale);
           return (
             <button
               key={issue.id}
@@ -301,13 +388,41 @@ export function IssueCarousel({
             >
               <span className="carousel-card-media">
                 {issue.image
-                  ? <img src={issue.image} alt="" draggable={false} loading={selected ? "eager" : "lazy"} />
+                  ? (
+                    <img
+                      src={issue.image}
+                      alt=""
+                      width={CARD_IMAGE_WIDTH}
+                      height={CARD_IMAGE_HEIGHT}
+                      draggable={false}
+                      decoding="async"
+                      fetchPriority={selected ? "high" : near ? "low" : "auto"}
+                      loading={near ? "eager" : "lazy"}
+                    />
+                  )
                   : <span className="carousel-card-fallback"><CategoryIcon category={issue.category} size={32} /></span>}
+                <span className={`carousel-card-status status-pill ${statusTone[issue.status]}`}>
+                  {getStatusLabel(issue.status, locale)}
+                </span>
               </span>
               <span className="carousel-card-body problem-card-body">
                 <strong className="problem-card-title">{titleOf(issue, locale)}</strong>
                 <span className="visually-hidden">{getCategoryLabel(issue.category, locale)}</span>
-                <ProblemFacts issue={issue} locale={locale} t={t} distance={distance} compact />
+                <span className="carousel-overlay-facts">
+                  <ProblemFacts issue={issue} locale={locale} t={t} distance={distance} compact />
+                </span>
+                <span className="carousel-stack-facts">
+                  <span className="carousel-card-where">
+                    <span className="carousel-card-address">{issue.address}</span>
+                    <span className="carousel-card-distance">{formatCopy(t.distanceAway, { distance })}</span>
+                  </span>
+                  <span className="carousel-card-foot">
+                    <span className="carousel-card-confirmed">
+                      {countCopy(issue.supporters, t.peopleConfirmedOne, t.peopleConfirmed)}
+                    </span>
+                    {age ? <time className="carousel-card-age">{age}</time> : null}
+                  </span>
+                </span>
               </span>
             </button>
           );

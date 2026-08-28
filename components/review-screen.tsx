@@ -11,8 +11,8 @@ import type { AIExtraction, Category, Issue, Locale, LocationFix } from "@/lib/t
 import { CategoryIcon } from "./category-icon";
 import { TopBar } from "./top-bar";
 
-const FILL_STAGGER_MS = 120;
-const HIGHLIGHT_MS = 480;
+const FILL_STAGGER_MS = 130;
+const HIGHLIGHT_MS = 420;
 const FILLED_NOTE_MS = 2500;
 
 type FillMode = "stagger" | "instant";
@@ -114,7 +114,7 @@ export function ReviewScreen({
   const showDuplicate = Boolean(duplicate && !different && revealed.duplicate);
 
   return (
-    <div className="full-page review-page">
+    <div className={`full-page review-page${photoReady ? "" : " is-awaiting"}`}>
       <TopBar title={t.review} onBack={onBack} />
       <div ref={photoRef} className={`review-evidence${photoReady ? "" : " is-awaiting"}`}>
         {photo && <img src={photo} alt={t.photoAlt} />}
