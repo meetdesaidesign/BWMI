@@ -25,7 +25,7 @@ export function OverlaySheet({
   titleClassName = "type-heading-md",
   className,
   footerClassName,
-  showHandle = false,
+  showHandle = true,
   closeAppearance = "well",
 }: {
   open: boolean;

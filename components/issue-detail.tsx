@@ -51,7 +51,7 @@ type ProgressStage = {
   state: ProgressState;
 };
 
-function field(issue: Issue, locale: Locale, name: "title" | "description" | "reportedAgo") {
+function field(issue: Issue, locale: Locale, name: "title" | "description") {
   return localizedField(issue as unknown as Record<string, unknown>, locale, name);
 }
 
@@ -153,7 +153,6 @@ export function IssueDetail({
   const photos = issue.image ? [issue.image] : [];
   const title = field(issue, locale, "title");
   const description = field(issue, locale, "description");
-  const reportedAgo = field(issue, locale, "reportedAgo");
   const stages = progressStages(issue, locale, t, authority.organizationName[locale]);
   const localeTag = locale === "en" ? "en-IN" : locale === "hi" ? "hi-IN" : "kn-IN";
   const distance = origin
@@ -311,17 +310,16 @@ export function IssueDetail({
       </header>
 
       <div className="issue-detail-scroll">
-        <IssuePhotos photos={photos} t={t} />
+        <IssuePhotos
+          photos={photos}
+          t={t}
+          categoryLabel={getCategoryLabel(issue.category, locale)}
+          statusLabel={getStatusLabel(issue.status, locale)}
+          statusTone={statusTone[issue.status]}
+        />
 
         <article className="issue-body">
           <div className="issue-intro">
-            <p className="issue-meta">
-              <span>{getCategoryLabel(issue.category, locale)}</span>
-              <span aria-hidden>·</span>
-              <span className={`status-pill ${statusTone[issue.status]}`}>{getStatusLabel(issue.status, locale)}</span>
-              <span aria-hidden>·</span>
-              <span>{reportedAgo}</span>
-            </p>
             <h1 className="issue-title">{title}</h1>
             {description ? <p className="issue-description">{description}</p> : null}
           </div>
@@ -487,30 +485,42 @@ export function IssueDetail({
   );
 }
 
-function IssuePhotos({ photos, t }: { photos: string[]; t: ReturnType<typeof getCopy> }) {
-  const countLabel = countCopy(Math.max(1, photos.length), t.photoCountOne, t.photoCount);
-
-  if (photos.length === 0) {
-    return (
-      <div className="issue-hero is-empty" role="img" aria-label={t.photoUnavailable}>
-        <ImageOff size={28} aria-hidden />
-        <span>{t.photoUnavailable}</span>
-      </div>
-    );
-  }
-
+function IssuePhotos({
+  photos,
+  t,
+  categoryLabel,
+  statusLabel,
+  statusTone,
+}: {
+  photos: string[];
+  t: ReturnType<typeof getCopy>;
+  categoryLabel: string;
+  statusLabel: string;
+  statusTone: string;
+}) {
   return (
-    <div className="issue-hero">
-      <div
-        className="issue-hero-track"
-        tabIndex={photos.length > 1 ? 0 : undefined}
-        aria-label={t.photoAlt}
-      >
-        {photos.map((src, photoIndex) => (
-          <IssuePhoto key={src} src={src} alt={photoIndex === 0 ? t.photoAlt : ""} t={t} />
-        ))}
+    <div className={`issue-hero${photos.length === 0 ? " is-empty" : ""}`}>
+      {photos.length === 0 ? (
+        <div className="issue-hero-fallback" role="img" aria-label={t.photoUnavailable}>
+          <ImageOff size={28} aria-hidden />
+          <span>{t.photoUnavailable}</span>
+        </div>
+      ) : (
+        <div
+          className="issue-hero-track"
+          tabIndex={photos.length > 1 ? 0 : undefined}
+          aria-label={t.photoAlt}
+        >
+          {photos.map((src, photoIndex) => (
+            <IssuePhoto key={src} src={src} alt={photoIndex === 0 ? t.photoAlt : ""} t={t} />
+          ))}
+        </div>
+      )}
+      <div className="issue-hero-meta">
+        <span>{categoryLabel}</span>
+        <span className="issue-hero-meta-separator" aria-hidden>·</span>
+        <span className={`status-pill ${statusTone}`}>{statusLabel}</span>
       </div>
-      <span className="issue-photo-count">{countLabel}</span>
     </div>
   );
 }

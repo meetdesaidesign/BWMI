@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element -- issue evidence thumbnails include local SVGs and data URLs */
 
-import { ChevronRight, MapPin, X } from "lucide-react";
+import { MapPin, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -421,10 +421,7 @@ export function IssueCarousel({
                     <span className="carousel-card-confirmed">
                       {countCopy(issue.supporters, t.confirmationCountOne, t.confirmationCount)}
                     </span>
-                    <span className="carousel-card-action">
-                      {age ? <time className="carousel-card-age">{age}</time> : null}
-                      <ChevronRight size={16} strokeWidth={2} aria-hidden />
-                    </span>
+                    {age ? <time className="carousel-card-age">{age}</time> : null}
                   </span>
                 </span>
               </span>

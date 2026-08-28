@@ -62,7 +62,6 @@ export function CaptureScreen({
   onEnterDetails: () => void;
 }) {
   const cameraRef = useRef<HTMLInputElement>(null);
-  const galleryRef = useRef<HTMLInputElement>(null);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [guestPending, setGuestPending] = useState(false);
 
@@ -72,7 +71,6 @@ export function CaptureScreen({
   const busy = analysis === "running";
 
   const openCamera = () => cameraRef.current?.click();
-  const openGallery = () => galleryRef.current?.click();
   const openPhotoOptions = () => setOptionsOpen(true);
 
   const continueAsGuest = async () => {
@@ -112,7 +110,6 @@ export function CaptureScreen({
       </div>
 
       <input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={(event) => { onFile(event.target.files?.[0]); event.target.value = ""; }} />
-      <input ref={galleryRef} hidden type="file" accept="image/*" onChange={(event) => { onFile(event.target.files?.[0]); event.target.value = ""; }} />
 
       {photo ? (
         <div ref={photoCardRef} className={`photo-card has-photo${analyzing ? " is-analyzing" : ""}`}>
@@ -174,7 +171,6 @@ export function CaptureScreen({
       <OverlaySheet open={optionsOpen} title={t.photoOptions} onClose={() => setOptionsOpen(false)} closeLabel={t.close} titleClassName="type-heading-sm">
         <ul className="photo-options">
           <li><button type="button" onClick={() => { setOptionsOpen(false); openCamera(); }}>{t.takeAnother}</button></li>
-          <li><button type="button" onClick={() => { setOptionsOpen(false); openGallery(); }}>{t.upload}</button></li>
           <li><button type="button" className="is-destructive" onClick={() => { setOptionsOpen(false); onRemovePhoto(); }}>{t.removePhoto}</button></li>
         </ul>
       </OverlaySheet>

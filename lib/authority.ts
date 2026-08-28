@@ -8,7 +8,7 @@ export const areaContext: AreaContext = {
   city: L("Bengaluru", "बेंगलुरु", "ಬೆಂಗಳೂರು"),
   corporation: L("Bengaluru South City Corporation", "बेंगलुरु दक्षिण शहर निगम", "ಬೆಂಗಳೂರು ದಕ್ಷಿಣ ನಗರ ನಿಗಮ"),
   ward: L("Ward 14", "वार्ड 14", "ವಾರ್ಡ್ 14"),
-  areaName: L("Jayanagar", "जयनगर", "ಜಯನಗರ"),
+  areaName: L("BTM Layout", "बीटीएम लेआउट", "ಬಿಟಿಎಂ ಲೇಔಟ್"),
   boundarySource: L("Greater Bengaluru Authority ward map", "ग्रेटर बेंगलुरु प्राधिकरण वार्ड मैप", "ಗ್ರೇಟರ್ ಬೆಂಗಳೂರು ಪ್ರಾಧಿಕಾರ ವಾರ್ಡ್ ನಕ್ಷೆ"),
   authority: {
     id: "auth-bscc-w14",
@@ -20,7 +20,7 @@ export const areaContext: AreaContext = {
     officerHandle: "@WardOfficer_W14",
     officerVerified: true,
     officerCurrent: true,
-    wardOffice: L("Ward 14 · Jayanagar", "वार्ड 14 · जयनगर", "ವಾರ್ಡ್ 14 · ಜಯನಗರ"),
+    wardOffice: L("BTM Layout Ward", "बीटीएम लेआउट वार्ड", "ಬಿಟಿಎಂ ಲೇಔಟ್ ವಾರ್ಡ್"),
     officialContact: "1800-14-0014",
     sourceName: "Greater Bengaluru Authority",
     sourceUrl: "https://gba.karnataka.gov.in/",

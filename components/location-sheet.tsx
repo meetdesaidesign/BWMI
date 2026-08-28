@@ -3,7 +3,7 @@
 import { ExternalLink, Phone } from "lucide-react";
 import { OverlaySheet } from "./overlay-sheet";
 import { formatCopy, type getCopy } from "@/lib/i18n";
-import { formatVerifiedDate, officerDisplayName } from "@/lib/authority";
+import { formatVerifiedDate } from "@/lib/authority";
 import type { AreaContext, Locale } from "@/lib/types";
 
 function telHref(contact: string) {
@@ -29,15 +29,14 @@ export function LocationSheet({
   onClose: () => void;
 }) {
   const authority = area.authority;
-  const officer = officerDisplayName(authority, locale);
   const tel = authority.officialContact ? telHref(authority.officialContact) : null;
   const verified = formatCopy(t.lastVerified, { date: formatVerifiedDate(authority.verifiedAt, locale) });
 
   return (
     <OverlaySheet
       open={open}
-      title={area.areaName[locale]}
-      subtitle={area.ward[locale]}
+      title={formatCopy(t.authorityForArea, { area: area.areaName[locale] })}
+      subtitle={formatCopy(t.areaWardTitle, { area: area.areaName[locale] })}
       onClose={onClose}
       closeLabel={t.close}
       className="is-area-profile"
@@ -63,27 +62,24 @@ export function LocationSheet({
         <div className="area-authority-who">
           <p className="area-kicker">{t.responsibleAuthority}</p>
           <p className="area-authority-org">{authority.organizationName[locale]}</p>
-          <p className="area-authority-office">{authority.departmentName[locale]}</p>
+          <p className="area-authority-office">
+            {formatCopy(t.areaWardTitle, { area: area.areaName[locale] })} · {area.escalationOffice[locale]}
+          </p>
         </div>
         <div className="area-officer">
-          <p className="area-officer-name">
-            {authority.routingPending ? t.routingInProgress : officer ?? t.officerPending}
-          </p>
-          {authority.routingPending ? null : (
-            <p className="area-officer-role">{authority.roleName[locale]}</p>
-          )}
+          <p className="area-officer-role">{authority.roleName[locale]}</p>
+          <span className="area-status-chip">{t.assignmentPending}</span>
         </div>
         {tel || authority.sourceUrl ? (
           <div className="area-authority-actions">
             {tel ? (
-              <a className="area-action" href={tel} aria-label={`${t.callOffice}, ${authority.officialContact}`}>
+              <a className="area-action is-primary" href={tel} aria-label={`${t.callOffice}, ${authority.officialContact}`}>
                 <Phone size={16} strokeWidth={2.25} aria-hidden />
                 {t.callOffice}
               </a>
             ) : null}
             {authority.sourceUrl ? (
-              <a className="area-action" href={authority.sourceUrl} target="_blank" rel="noreferrer">
-                <ExternalLink size={16} strokeWidth={2.25} aria-hidden />
+              <a className="area-action is-secondary" href={authority.sourceUrl} target="_blank" rel="noreferrer">
                 {t.viewAuthority}
               </a>
             ) : null}
@@ -93,14 +89,19 @@ export function LocationSheet({
 
       <section className="area-escalate" aria-labelledby="area-escalate-heading">
         <h3 id="area-escalate-heading" className="area-escalate-title">{t.ifUnresolved}</h3>
-        <p className="area-escalate-role">{area.escalationRole[locale]}</p>
-        <p className="area-escalate-office">{area.escalationOffice[locale]}</p>
-        {tel ? (
-          <a className="area-escalate-call" href={tel}>
-            <Phone size={16} strokeWidth={2.25} aria-hidden />
-            {formatCopy(t.callNumber, { number: authority.officialContact })}
-          </a>
-        ) : null}
+        <p className="area-escalate-description">{t.escalationHelp}</p>
+        <div className="area-contact-card">
+          <div className="area-contact-copy">
+            <p className="area-contact-name">{t.zonalOfficeName}</p>
+            <p className="area-contact-number">{authority.officialContact}</p>
+          </div>
+          {tel ? (
+            <a className="area-contact-call" href={tel} aria-label={`${t.call}, ${authority.officialContact}`}>
+              <Phone size={15} strokeWidth={2.25} aria-hidden />
+              {t.call}
+            </a>
+          ) : null}
+        </div>
       </section>
 
       <section className="area-reps" aria-labelledby="area-reps-heading">
@@ -109,7 +110,7 @@ export function LocationSheet({
           {area.representatives.map((rep) => (
             <li key={rep.role}>
               <span className="area-rep-role">{rep.title[locale]}</span>
-              <span className="area-rep-name">{rep.vacant || !rep.name ? t.positionVacant : rep.name[locale]}</span>
+              <span className="area-status-chip">{t.positionVacant}</span>
             </li>
           ))}
         </ul>
