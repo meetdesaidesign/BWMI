@@ -60,7 +60,7 @@
   --page-section-gap: 32px;
   --page-max-width: 430px;
   --touch-min: 44px;
-  --nav-height: 64px;
+  --nav-height: 52px;
   --nav-height-landscape: 56px;
   --nav-inset: 0px;
   --nav-inset-x: 0px;
@@ -74,7 +74,7 @@
   --nav-report-height: 56px;
   --nav-report-width-landscape: 48px;
   --nav-report-height-landscape: 48px;
-  --nav-report-shadow: 0 2px 4px rgba(17, 24, 39, 0.14), 0 8px 18px rgba(115, 19, 245, 0.32);
+  --nav-report-shadow: 0 2px 4px rgba(17, 24, 39, 0.12), 0 6px 14px rgba(115, 19, 245, 0.20);
   --nav-icon-well: 24px;
   --nav-icon-size: 24px;
   --nav-notch-radius: 0px;
