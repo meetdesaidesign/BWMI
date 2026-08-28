@@ -131,6 +131,7 @@ export function ProblemCard({
       type="button"
       data-issue-id={issue.id}
       className="problem-card"
+      aria-label={`${titleOf(issue, locale)}. ${issue.address}. ${getStatusLabel(issue.status, locale)}`}
       onClick={onClick}
     >
       <span className="problem-card-main">

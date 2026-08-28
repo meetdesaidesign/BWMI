@@ -1,9 +1,9 @@
 "use client";
 
 import { ClipboardList, MapPin, SlidersHorizontal } from "lucide-react";
-import { useEffect, useId, useMemo, useState, type Ref } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type RefObject } from "react";
 import { OverlaySheet } from "./overlay-sheet";
-import { ProblemCard, ProblemCardSkeleton } from "./problem-card";
+import { ProblemCard } from "./problem-card";
 import { ProfileAvatar } from "./profile-avatar";
 import { ALL_CATEGORIES, ALL_STATUS_GROUPS } from "@/lib/filters";
 import { toStatusGroup } from "@/lib/public-status";
@@ -108,6 +108,8 @@ function MineFilterSheet({
     <OverlaySheet
       open={open}
       title={t.filterIssues}
+      className="mine-filter-sheet"
+      showHandle
       onClose={onClose}
       closeLabel={t.close}
       footer={(
@@ -183,31 +185,54 @@ export function MineScreen({
   onOpenIssue: (issue: Issue) => void;
   onReport: () => void;
   onExploreNearby: () => void;
-  scrollRef: Ref<HTMLDivElement>;
+  scrollRef: RefObject<HTMLDivElement | null>;
 }) {
   const [tab, setTab] = useState<MineTab>("raised");
+  const [renderedTab, setRenderedTab] = useState<MineTab>("raised");
+  const [listMotion, setListMotion] = useState<"idle" | "out-left" | "out-right" | "in-left" | "in-right">("idle");
   const [filters, setFilters] = useState<MineFilters>(defaultMineFilters);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [ready, setReady] = useState(false);
+  const [applyingFilters, setApplyingFilters] = useState(false);
+  const [firstEntrance, setFirstEntrance] = useState(true);
+  const switching = useRef(false);
+  const scrollPositions = useRef<Record<MineTab, number>>({ raised: 0, supported: 0 });
   const raisedTabId = useId();
   const supportedTabId = useId();
   const panelId = useId();
   const activeCount = filterCount(filters);
 
   useEffect(() => {
-    if (!visible || ready) return;
-    const timer = window.setTimeout(() => setReady(true), 360);
+    if (!visible || !firstEntrance) return;
+    const timer = window.setTimeout(() => setFirstEntrance(false), 360);
     return () => window.clearTimeout(timer);
-  }, [visible, ready]);
+  }, [visible, firstEntrance]);
 
   const raisedFiltered = useMemo(() => applyMineFilters(raised, filters), [raised, filters]);
   const supportedFiltered = useMemo(() => applyMineFilters(supported, filters), [supported, filters]);
-  const items = tab === "raised" ? raisedFiltered : supportedFiltered;
-  const sourceEmpty = (tab === "raised" ? raised : supported).length === 0;
+  const items = renderedTab === "raised" ? raisedFiltered : supportedFiltered;
+  const sourceEmpty = (renderedTab === "raised" ? raised : supported).length === 0;
   const filteredEmpty = !sourceEmpty && items.length === 0;
 
+  const selectTab = (next: MineTab) => {
+    if (next === tab || switching.current) return;
+    switching.current = true;
+    scrollPositions.current[tab] = scrollRef.current?.scrollTop ?? 0;
+    const forward = next === "supported";
+    setTab(next);
+    setListMotion(forward ? "out-left" : "out-right");
+    window.setTimeout(() => {
+      setRenderedTab(next);
+      setListMotion(forward ? "in-right" : "in-left");
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ top: scrollPositions.current[next], behavior: "auto" });
+        requestAnimationFrame(() => setListMotion("idle"));
+      });
+      window.setTimeout(() => { switching.current = false; }, 170);
+    }, 90);
+  };
+
   return (
-    <div className="screen-scroll" ref={scrollRef}>
+    <div className={`screen-scroll mine-page${visible ? " is-visible" : ""}${firstEntrance ? " is-first-view" : ""}`} ref={scrollRef}>
       <header className="mine-header">
         <div className="mine-heading">
           <h1 className="type-heading-md">{t.reports}</h1>
@@ -224,7 +249,8 @@ export function MineScreen({
       </header>
 
       <div className="mine-toolbar">
-        <div className="mine-segments" role="tablist" aria-label={t.mineTabsAria}>
+        <div className={`mine-segments is-${tab}`} role="tablist" aria-label={t.mineTabsAria}>
+          <span className="mine-segment-selection" aria-hidden />
           <button
             type="button"
             role="tab"
@@ -232,10 +258,10 @@ export function MineScreen({
             aria-controls={panelId}
             aria-selected={tab === "raised"}
             className={`mine-segment${tab === "raised" ? " is-active" : ""}`}
-            onClick={() => setTab("raised")}
+            onClick={() => selectTab("raised")}
           >
             <span>{t.mineRaised}</span>
-            <span className="mine-segment-count">{raised.length}</span>
+            <span key={raised.length} className="mine-segment-count">{raised.length}</span>
           </button>
           <button
             type="button"
@@ -244,10 +270,10 @@ export function MineScreen({
             aria-controls={panelId}
             aria-selected={tab === "supported"}
             className={`mine-segment${tab === "supported" ? " is-active" : ""}`}
-            onClick={() => setTab("supported")}
+            onClick={() => selectTab("supported")}
           >
             <span>{t.mineSupported}</span>
-            <span className="mine-segment-count">{supported.length}</span>
+            <span key={supported.length} className="mine-segment-count">{supported.length}</span>
           </button>
         </div>
         <button
@@ -255,7 +281,7 @@ export function MineScreen({
           className={`mine-filter${activeCount ? " is-active" : ""}`}
           aria-label={t.mineFilterAria}
           aria-pressed={activeCount > 0}
-          onClick={() => setFilterOpen(true)}
+          onClick={() => { if (!filterOpen) setFilterOpen(true); }}
         >
           <SlidersHorizontal size={16} strokeWidth={2} aria-hidden />
           {activeCount > 0 ? <span className="mine-filter-badge">{activeCount}</span> : null}
@@ -266,24 +292,19 @@ export function MineScreen({
         className="mine-feed"
         id={panelId}
         role="tabpanel"
-        aria-labelledby={tab === "raised" ? raisedTabId : supportedTabId}
-        aria-busy={!ready || undefined}
+        aria-labelledby={renderedTab === "raised" ? raisedTabId : supportedTabId}
+        aria-busy={applyingFilters || undefined}
       >
-        {!ready ? (
-          <div className="issue-list" aria-label={t.loadingReports}>
-            <ProblemCardSkeleton />
-            <ProblemCardSkeleton />
-            <ProblemCardSkeleton />
-          </div>
-        ) : sourceEmpty ? (
+        <div className={`mine-list-transition is-${listMotion}${applyingFilters ? " is-applying" : ""}`}>
+        {sourceEmpty ? (
           <div className="empty-state is-compact">
             <span className="empty-state-icon" aria-hidden>
-              {tab === "raised" ? <ClipboardList size={28} strokeWidth={1.75} /> : <MapPin size={28} strokeWidth={1.75} />}
+              {renderedTab === "raised" ? <ClipboardList size={28} strokeWidth={1.75} /> : <MapPin size={28} strokeWidth={1.75} />}
             </span>
-            <h2 className="type-heading-sm">{tab === "raised" ? t.empty : t.emptySupported}</h2>
-            <p className="type-body-md">{tab === "raised" ? t.emptyRaisedHelp : t.emptySupportedHelp}</p>
-            <button type="button" className="primary-button empty-state-cta" onClick={tab === "raised" ? onReport : onExploreNearby}>
-              {tab === "raised" ? t.reportIssue : t.emptySupportedCta}
+            <h2 className="type-heading-sm">{renderedTab === "raised" ? t.empty : t.emptySupported}</h2>
+            <p className="type-body-md">{renderedTab === "raised" ? t.emptyRaisedHelp : t.emptySupportedHelp}</p>
+            <button type="button" className="primary-button empty-state-cta" onClick={renderedTab === "raised" ? onReport : onExploreNearby}>
+              {renderedTab === "raised" ? t.reportIssue : t.emptySupportedCta}
             </button>
           </div>
         ) : filteredEmpty ? (
@@ -306,6 +327,7 @@ export function MineScreen({
             ))}
           </div>
         )}
+        </div>
       </section>
 
       <MineFilterSheet
@@ -315,8 +337,14 @@ export function MineScreen({
         applied={filters}
         onClose={() => setFilterOpen(false)}
         onApply={(next) => {
+          setApplyingFilters(true);
           setFilters(next);
           setFilterOpen(false);
+          window.setTimeout(() => {
+            scrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
+            scrollPositions.current[renderedTab] = 0;
+            setApplyingFilters(false);
+          }, 160);
         }}
       />
     </div>

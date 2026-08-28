@@ -139,6 +139,8 @@ export function FixoApp() {
   const mineScrollRef = useRef<HTMLDivElement>(null);
   const lastHome = useRef<HomeScreen>("nearby");
   const openingReport = useRef(false);
+  const openingIssue = useRef(false);
+  const [homeLeaving, setHomeLeaving] = useState(false);
   const appRootRef = useRef<HTMLDivElement>(null);
   const photoFromRef = useRef<HTMLDivElement>(null);
   const photoToRef = useRef<HTMLDivElement>(null);
@@ -411,7 +413,17 @@ export function FixoApp() {
     setFillMode("stagger");
   };
 
-  const chooseIssue = (issue: Issue) => { setSelectedId(issue.id); navigate("issue"); };
+  const chooseIssue = (issue: Issue) => {
+    if (openingIssue.current) return;
+    openingIssue.current = true;
+    setSelectedId(issue.id);
+    setHomeLeaving(true);
+    window.setTimeout(() => {
+      navigate("issue");
+      setHomeLeaving(false);
+      window.setTimeout(() => { openingIssue.current = false; }, 140);
+    }, prefersReducedMotion() ? 0 : 80);
+  };
 
   const readFile = (file?: File, contest = false) => {
     if (!file) return;
@@ -645,7 +657,7 @@ export function FixoApp() {
   return (
     <div className="app-root" ref={appRootRef}>
       {offline && <div className="offline-banner"><CircleAlert size={15} />{t.offline}</div>}
-      <div className={`home-stack${isHome ? "" : " is-covered"}${keyboardOpen ? " is-nav-hidden" : ""}`} {...(!isHome ? { inert: true, "aria-hidden": true } : {})}>
+      <div className={`home-stack${isHome ? "" : " is-covered"}${keyboardOpen ? " is-nav-hidden" : ""}${homeLeaving ? " is-leaving" : ""}`} {...(!isHome ? { inert: true, "aria-hidden": true } : {})}>
         <div className="home-body">
           <div className={`screen-pane${screen === "mine" ? " is-dormant" : ""}`} {...(screen === "mine" ? { inert: true, "aria-hidden": true } : {})}>
             <NearbyScreen
@@ -832,4 +844,3 @@ export function FixoApp() {
 function ContestScreen({ t, photo, fileRef, onFile, onBack, onSubmit }: { t: ReturnType<typeof getCopy>; photo: string | null; fileRef: React.RefObject<HTMLInputElement | null>; onFile: (f?: File) => void; onBack: () => void; onSubmit: () => void }) {
   return <div className="full-page contest-page"><TopBar title={t.reopen} onBack={onBack} /><div className="capture-copy"><p className="eyebrow">{t.contestStep}</p><h1 className="type-heading-lg">{t.contestTitle}</h1><p className="type-body-md">{t.contestHelp}</p></div><input ref={fileRef} hidden type="file" accept="image/*" capture="environment" onChange={(e) => onFile(e.target.files?.[0])} /><button className={`contest-upload ${photo ? "has-photo" : ""}`} onClick={() => fileRef.current?.click()}>{photo ? <img src={photo} alt={t.photoAlt} /> : <><ImagePlus size={30} /><strong className="type-label-md">{t.camera}</strong><span className="type-caption">{t.upload}</span></>}</button><div className="contest-note"><ShieldCheck size={18} /><p className="type-caption">{t.contestNote}</p></div><div className="sticky-action"><Button block color="danger" size="large" className="primary-button danger-fill" disabled={!photo} onClick={onSubmit}>{t.reopen}<ArrowRight size={18} /></Button></div></div>;
 }
-
