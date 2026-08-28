@@ -6,7 +6,10 @@ export function assetPath(path: string) {
   // an already-prefixed URL does not become `/BWMI/BWMI/...`.
   if (/^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(path)) return path;
 
-  const normalizedBase = basePath.replace(/\/$/, "");
+  // Normalize the configured value as well as the requested path so the
+  // idempotence check is not sensitive to optional leading/trailing slashes.
+  const trimmedBase = basePath.replace(/^\/+|\/+$/g, "");
+  const normalizedBase = trimmedBase ? `/${trimmedBase}` : "";
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
 
   if (
