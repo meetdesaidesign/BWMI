@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, Instagram, Loader2, Lock, Save } from "lucide-react";
+import { Check, Copy, Loader2, Lock, Save } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Toast } from "antd-mobile";
 import { assetPath, brand } from "@/lib/assets";
@@ -10,6 +10,16 @@ import type { Issue, Locale } from "@/lib/types";
 
 type Copy = ReturnType<typeof getCopy>;
 type Action = "share" | "save" | "copy";
+
+function InstagramIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" strokeWidth="2" />
+      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
+      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
+    </svg>
+  );
+}
 
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -195,7 +205,7 @@ export function StoryCard({ issue, locale, t }: { issue: Issue; locale: Locale; 
           data-tooltip={t.shareToInstagram}
           aria-label={t.shareToInstagram}
         >
-          {busy === "share" ? <Loader2 size={18} className="story-spin" aria-hidden /> : <Instagram size={18} aria-hidden />}
+          {busy === "share" ? <Loader2 size={18} className="story-spin" aria-hidden /> : <InstagramIcon />}
           {busy === "share" ? t.storySharing : t.shareToInstagram}
         </button>
         <div className="story-secondary-row">
