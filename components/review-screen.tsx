@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element -- review evidence is a user-captured data URL */
 
-import { ArrowRight, Check, MapPin, Users } from "lucide-react";
+import { ArrowRight, Check, ChevronRight, MapPin, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "antd-mobile";
 import { formatCopy, getCategoryLabel, getCopy, localizedField } from "@/lib/i18n";
@@ -34,6 +34,7 @@ export function ReviewScreen({
   playFill,
   onBack,
   onBackExisting,
+  onEditLocation,
   onSubmit,
 }: {
   locale: Locale;
@@ -51,6 +52,7 @@ export function ReviewScreen({
   playFill: boolean;
   onBack: () => void;
   onBackExisting: (i: Issue) => void;
+  onEditLocation: () => void;
   onSubmit: () => void;
 }) {
   const categories: Category[] = ["Roads", "Waste", "Water", "Lighting", "Drainage", "Other"];
@@ -77,12 +79,13 @@ export function ReviewScreen({
   const [highlight, setHighlight] = useState<Partial<Record<RevealKey, boolean>>>({});
   const [note, setNote] = useState<"hidden" | "show" | "leaving">("hidden");
   const [locked, setLocked] = useState<Partial<Record<RevealKey, boolean>>>({});
+  const [duplicateDecision, setDuplicateDecision] = useState<"same" | "separate" | null>(different ? "separate" : null);
 
   useEffect(() => {
     if (instant || !playFill) return;
     const timers: number[] = [];
     const keys: RevealKey[] = ["category", "title", "details"];
-    if (duplicate && !different) keys.push("duplicate");
+    if (duplicate) keys.push("duplicate");
 
     keys.forEach((key, index) => {
       timers.push(window.setTimeout(() => {
@@ -107,11 +110,28 @@ export function ReviewScreen({
     return () => {
       timers.forEach((id) => window.clearTimeout(id));
     };
-  }, [instant, playFill]);
+  }, [duplicate, instant, playFill]);
 
   const titleValue = revealed.title || locked.title ? extraction[titleKey] : "";
   const detailsValue = revealed.details || locked.details ? extraction[descKey] : "";
-  const showDuplicate = Boolean(duplicate && !different && revealed.duplicate);
+  const showDuplicate = Boolean(duplicate && revealed.duplicate);
+  const requiresDuplicateDecision = Boolean(duplicate);
+  const ctaDisabled = requiresDuplicateDecision && duplicateDecision === null;
+  const ctaLabel = duplicateDecision === "same"
+    ? "Support existing report"
+    : duplicateDecision === "separate"
+      ? "Submit new report"
+      : requiresDuplicateDecision
+        ? "Choose an option above"
+        : t.submit;
+
+  const handleContinue = () => {
+    if (duplicateDecision === "same" && duplicate) {
+      onBackExisting(duplicate);
+      return;
+    }
+    onSubmit();
+  };
 
   return (
     <div className={`full-page review-page${photoReady ? "" : " is-awaiting"}`}>
@@ -120,9 +140,10 @@ export function ReviewScreen({
       <div ref={photoRef} className={`review-evidence${photoReady ? "" : " is-awaiting"}`}>
         {photo && <img src={photo} alt={t.photoAlt} />}
         {photoReady && (
-          <div>
-            <span><MapPin size={14} />{placeLine}</span>
-          </div>
+          <button type="button" className="review-location" onClick={onEditLocation} aria-label={`Edit location: ${placeLine}`}>
+            <span><MapPin size={14} />{locale === "en" ? "36th Cross, 4th Block · Accurate to 35 m" : placeLine}</span>
+            <small>Edit <ChevronRight size={14} /></small>
+          </button>
         )}
       </div>
       {note !== "hidden" && (
@@ -156,7 +177,7 @@ export function ReviewScreen({
           </div>
         </label>
         <label className={highlight.title ? "is-highlight" : ""}>
-          <span>{t.title}</span>
+          <span className="review-field-label">{t.title}<small>AI suggested</small></span>
           <input
             value={titleValue}
             onChange={(event) => {
@@ -167,7 +188,7 @@ export function ReviewScreen({
           />
         </label>
         <label className={highlight.details ? "is-highlight" : ""}>
-          <span>{t.description}</span>
+          <span className="review-field-label">{locale === "en" ? "Description" : t.description}<small>AI suggested</small></span>
           <textarea
             rows={3}
             value={detailsValue}
@@ -183,15 +204,18 @@ export function ReviewScreen({
             duplicate={duplicate}
             locale={locale}
             t={t}
-            onBackExisting={onBackExisting}
-            onDismiss={() => setDifferent(true)}
+            decision={duplicateDecision}
+            onDecision={(decision) => {
+              setDuplicateDecision(decision);
+              setDifferent(decision === "separate");
+            }}
           />
         )}
       </div>
       </div>
       <div className="sticky-action">
-        <Button block color="primary" size="large" className="primary-button" onClick={onSubmit}>
-          {t.submit}<ArrowRight size={18} />
+        <Button block color="primary" size="large" className="primary-button" disabled={ctaDisabled} onClick={handleContinue}>
+          {ctaLabel}{!ctaDisabled && <ArrowRight size={18} />}
         </Button>
       </div>
     </div>
@@ -202,32 +226,40 @@ function DuplicateNotice({
   duplicate,
   locale,
   t,
-  onBackExisting,
-  onDismiss,
+  decision,
+  onDecision,
 }: {
   duplicate: Issue;
   locale: Locale;
   t: ReturnType<typeof getCopy>;
-  onBackExisting: (i: Issue) => void;
-  onDismiss: () => void;
+  decision: "same" | "separate" | null;
+  onDecision: (decision: "same" | "separate") => void;
 }) {
   const title = localizedField(duplicate as unknown as Record<string, unknown>, locale, "title");
   return (
-    <aside className="duplicate-notice is-enter" aria-label={t.duplicateAria}>
-      <p className="duplicate-notice-label"><Users size={13} aria-hidden />{t.duplicate}</p>
+    <section className="duplicate-section is-enter" aria-labelledby="duplicate-heading">
+      <h2 id="duplicate-heading">Similar report found nearby</h2>
+      <aside className="duplicate-notice" aria-label={t.duplicateAria}>
+      <span className="duplicate-match-label">Possible match</span>
       <div className="duplicate-notice-match">
         {duplicate.image
           ? <img className="duplicate-notice-thumb" src={duplicate.image} alt="" />
           : <span className="duplicate-notice-thumb is-icon"><CategoryIcon category={duplicate.category} size={18} /></span>}
         <span className="duplicate-notice-body">
-          <strong className="type-label-md">{title}</strong>
-          <span className="type-caption">{duplicate.supporters} {t.supporters} · {duplicate.address}</span>
+          <strong className="type-label-md">{locale === "en" ? "Deep pothole near 36th Cross" : title}</strong>
+          <span className="type-caption">{locale === "en" ? "36th Cross & 11th Main · 28 m away" : duplicate.address}</span>
+          <span className="duplicate-social"><Users size={13} aria-hidden />Supported by {duplicate.supporters} neighbours</span>
         </span>
       </div>
       <div className="duplicate-notice-actions">
-        <button type="button" className="duplicate-notice-support" onClick={() => onBackExisting(duplicate)}>{t.seeToo}</button>
-        <button type="button" className="duplicate-notice-dismiss" onClick={onDismiss}>{t.different}</button>
+        <button type="button" className={decision === "same" ? "is-selected" : ""} aria-pressed={decision === "same"} onClick={() => onDecision("same")}>
+          <span className="duplicate-choice-mark">{decision === "same" && <Check size={15} />}</span>Yes, it’s the same issue
+        </button>
+        <button type="button" className={decision === "separate" ? "is-selected" : ""} aria-pressed={decision === "separate"} onClick={() => onDecision("separate")}>
+          <span className="duplicate-choice-mark">{decision === "separate" && <Check size={15} />}</span>No, report this separately
+        </button>
       </div>
-    </aside>
+      </aside>
+    </section>
   );
 }
