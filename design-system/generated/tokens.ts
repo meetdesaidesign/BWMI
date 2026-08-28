@@ -10,7 +10,7 @@ export const tokens = {
   chipRadius: "9999px",
   chipPaddingX: "16px",
   chipBorder: "#D5DCE8",
-  filterChipHeight: "34px",
+  filterChipHeight: "40px",
   filterChipRadius: "9999px",
   filterChipPaddingX: "12px",
   filterChipGap: "4px",
