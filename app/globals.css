@@ -973,8 +973,8 @@ p { text-wrap: pretty; }
     --carousel-card-width: min(86cqw, 340px);
     --carousel-peek: 14px;
     --carousel-gap: max(12px, calc((100% - var(--carousel-card-width)) / 2 - var(--carousel-peek)));
-    --carousel-media-height: 152px;
-    --carousel-card-shadow: 0 0 0 1px rgba(17, 24, 39, 0.04), 0 1px 2px rgba(17, 24, 39, 0.06), 0 6px 16px rgba(17, 24, 39, 0.08);
+    --carousel-media-height: calc(var(--carousel-card-width) / 2);
+    --carousel-card-shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 4px 12px rgba(17, 24, 39, 0.06);
     gap: var(--space-2);
     padding-bottom: calc(var(--space-4) + var(--nav-report-rise, 0px));
     pointer-events: auto;
@@ -1004,6 +1004,7 @@ p { text-wrap: pretty; }
     overflow: hidden;
     border-radius: var(--radius-20);
     background: var(--surface-primary);
+    border: 1px solid var(--border-subtle);
     transition: none;
     touch-action: pan-x;
     user-select: none;
@@ -1014,6 +1015,7 @@ p { text-wrap: pretty; }
     flex: none;
     width: 100%;
     height: var(--carousel-media-height);
+    aspect-ratio: 2 / 1;
     overflow: hidden;
     border-radius: var(--radius-20) var(--radius-20) 0 0;
     background: var(--surface-secondary);
@@ -1027,19 +1029,24 @@ p { text-wrap: pretty; }
   .carousel-card-media img {
     outline: 1px solid rgba(17, 24, 39, 0.10);
     outline-offset: -1px;
+    object-position: center;
   }
   .carousel-card-media::after { display: none; }
   .carousel-card-status {
     display: inline-flex;
     position: absolute;
-    top: 10px;
-    left: 10px;
+    top: 12px;
+    left: 12px;
     z-index: 1;
-    max-width: calc(100% - 20px);
+    max-width: calc(100% - 24px);
     overflow: hidden;
     text-overflow: ellipsis;
     box-shadow: var(--shadow-sm);
     pointer-events: none;
+    min-height: 22px;
+    padding: 2px 8px;
+    font-size: 11px;
+    line-height: 16px;
   }
   .carousel-card-status.slate {
     background: var(--surface-elevated);
@@ -1052,35 +1059,44 @@ p { text-wrap: pretty; }
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: var(--space-2);
-    padding: 14px var(--space-4) var(--space-4);
+    gap: 6px;
+    padding: 11px 14px 12px;
     background: var(--surface-primary);
     color: var(--text-primary);
   }
   .carousel-card-body .problem-card-title {
-    font-size: var(--type-heading-sm-size);
-    line-height: var(--type-heading-sm-line-height);
+    font-size: 19px;
+    line-height: 23px;
     letter-spacing: var(--type-heading-sm-tracking);
     font-weight: var(--type-heading-sm-weight);
     color: var(--text-primary);
     text-wrap: pretty;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   .carousel-overlay-facts { display: none; }
   .carousel-stack-facts {
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
+    gap: 8px;
     min-width: 0;
   }
   .carousel-card-where {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     min-width: 0;
     max-width: 100%;
     font-size: var(--type-caption-size);
     line-height: var(--type-caption-line-height);
     font-weight: var(--font-weight-medium);
     color: var(--text-secondary);
+  }
+  .carousel-card-where > svg {
+    flex: none;
+    color: var(--text-tertiary);
   }
   .carousel-card-address {
     min-width: 0;
@@ -1092,6 +1108,7 @@ p { text-wrap: pretty; }
     flex: none;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
+    color: var(--text-tertiary);
   }
   .carousel-card-distance::before {
     content: "·";
@@ -1105,8 +1122,8 @@ p { text-wrap: pretty; }
     gap: var(--space-3);
     min-width: 0;
     margin: 0;
-    padding: 0;
-    border: 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-subtle);
     font-size: var(--type-caption-size);
     line-height: var(--type-caption-line-height);
     font-weight: var(--font-weight-medium);
@@ -1125,6 +1142,14 @@ p { text-wrap: pretty; }
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
+  .carousel-card-action {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-tertiary);
+  }
+  .carousel-card-action > svg { color: var(--action-primary); }
 }
 
 /*
