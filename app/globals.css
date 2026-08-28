@@ -1746,18 +1746,15 @@ p { text-wrap: pretty; }
   color: var(--text-primary);
   font-weight: var(--font-weight-semibold);
 }
-.area-status-chip {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  min-height: 26px;
-  padding: 3px var(--space-2);
-  border-radius: var(--radius-8);
-  background: var(--surface-secondary);
+.area-officer-name {
+  min-width: 0;
+  overflow: hidden;
   color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 18px;
-  font-weight: var(--font-weight-semibold);
+  font-size: var(--type-label-md-size);
+  line-height: var(--type-label-md-line-height);
+  font-weight: var(--font-weight-medium);
+  text-align: right;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .area-authority-actions {
@@ -1878,6 +1875,17 @@ p { text-wrap: pretty; }
   font-size: var(--type-label-md-size);
   line-height: var(--type-label-md-line-height);
   font-weight: var(--font-weight-semibold);
+}
+.area-rep-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: var(--type-label-md-size);
+  line-height: var(--type-label-md-line-height);
+  font-weight: var(--font-weight-medium);
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .area-reps-note {
   margin: 0;
