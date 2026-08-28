@@ -2722,15 +2722,12 @@ p { text-wrap: pretty; }
   margin-top: var(--space-4);
   min-width: 0;
 }
-.issue-confirm-primary,
-.issue-confirm-secondary {
+.issue-confirm-primary {
   min-height: var(--touch-min);
   border-radius: var(--button-radius);
   font-size: var(--type-label-md-size);
   font-weight: var(--font-weight-semibold);
   text-align: center;
-}
-.issue-confirm-primary {
   flex: 1 1 auto;
   min-width: 0;
   display: inline-flex;
@@ -2744,13 +2741,6 @@ p { text-wrap: pretty; }
 }
 .issue-confirm-primary svg { flex-shrink: 0; }
 .issue-confirm-primary:disabled { opacity: 0.7; }
-.issue-confirm-secondary {
-  flex: 0 0 auto;
-  padding: 0 var(--space-4);
-  border: 1px solid var(--border-default);
-  background: var(--surface-primary);
-  color: var(--text-primary);
-}
 .issue-confirm-error {
   display: flex;
   flex-wrap: wrap;
